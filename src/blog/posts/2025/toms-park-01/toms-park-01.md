@@ -12,6 +12,8 @@ tags:
   - MBT
 ---
 
+TL;DR - [Here is the audio track, PWYW @ Bandcamp](https://templeofexla.bandcamp.com/album/echoes-at-the-threshold-tom-s-park-meditations-vol-01)
+
 ## Introduction
 
 This project brings together technology, creativity, and consciousness exploration—combining AI narration, sound design, and a carefully crafted script to create a 30-minute guided meditation. Our journey is inspired by Tom Campbell’s “Tom’s Park,” a multi-sensory imagination training ground for growing intuition and inner clarity[^3].
