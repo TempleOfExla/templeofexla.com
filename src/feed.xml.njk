@@ -1,0 +1,24 @@
+---
+permalink: /feed.xml
+layout: null
+eleventyExcludeFromCollections: true
+---
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <title>{{ site.title }}</title>
+    <link>{{ site.url }}/blog/</link>
+    <description>{{ site.description }}</description>
+    <language>en</language>
+    <lastBuildDate>{{ collections.posts[0].date | getNewestCollectionItemDate | dateToRfc822 }}</lastBuildDate>
+    {%- for post in collections.posts | reverse %}
+    <item>
+      <title>{{ post.data.title | escape }}</title>
+      <link>{{ site.url }}{{ post.url }}</link>
+      <pubDate>{{ post.date | dateToRfc822 }}</pubDate>
+      <description>{{ post.data.summary | safe }}</description>
+      <guid>{{ site.url }}{{ post.url }}</guid>
+    </item>
+    {% endfor %}
+  </channel>
+</rss>

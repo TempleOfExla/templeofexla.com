@@ -1,0 +1,12 @@
+{
+  "url": "https://templeofexla.com",
+  "title": "Temple of The Exalted Lantern",
+  "maintainer": "icculus@templeofexla",
+  "contact_email": "icculus at temple of exla dot com",
+  "description": "Journeying at the edge, aligned with what’s possible, not just what’s known.",
+  "socials": [ {"name": "X / Twitter" , "url": "https://x.com/templeofexla", "icon": "x"},              
+               {"name": "Instagram", "url": "https://instagram.com/templeofexla", "icon": "instagram"},
+               {"name": "GitHub", "url": "https://github.com/templeofexla", "icon": "github"},
+               {"name": "Bandcamp", "url": "https://templeofexla.bandcamp.com", "icon": "bandcamp"}
+               ]
+}

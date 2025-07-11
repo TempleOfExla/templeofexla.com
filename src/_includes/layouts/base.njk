@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>{{ site.title }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{{ site.description or '' }}">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/feed.xml">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="nav-row">
+        <div class="site-brand"><a href="/">{{ site.title }}</a></div>
+        <nav class="site-nav">
+          <a href="/audio/">Audio</a>
+          <a href="/blog/">Blog</a>
+          <a href="/merch/">Merch</a>          
+          <a href="/about/">About</a>
+
+          <span id="theme-toggle" class="nav-theme-toggle">🌙</span>
+        </nav>
+      </div>
+    </header>
+    <main>
+      {% block content %}
+        {{ content | safe }}
+      {% endblock %}      
+    </main>
+    <footer class="site-footer">
+      <div class="footer-row">
+        <div>
+          <small>© {{ util.currentYear }} {{ site.title }} — Web design by Temple of the Exalted Lantern</small>
+        </div>
+        <div class="footer-links">
+          {% for social in site.socials %}
+            <a href="{{ social.url }}" target="_blank" rel="noopener">
+              {% include "icons/" + social.icon + ".svg" %}
+              <span class="sr-only">{{ social.name }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="footer-row footer-row-bottom">
+        <a href="/privacy-policy/">Privacy Policy</a>
+        <a href="/terms/">Terms and Conditions</a>
+      </div>
+    </footer>
+
+
+        <script>
+      const btn = document.getElementById('theme-toggle');
+      // Save user preference in localStorage
+      function setTheme(dark) {
+        document.body.classList.toggle('dark', dark);
+        localStorage.setItem('theme', dark ? 'dark' : 'light');
+        btn.textContent = dark ? "☀️" : "🌙";
+      }
+      // On page load, restore previous preference or use system setting
+      const saved = localStorage.getItem('theme');
+      const dark = saved ? saved === 'dark' : window.matchMedia("(prefers-color-scheme: dark)").matches;
+      setTheme(dark);
+
+      btn.addEventListener('click', () => setTheme(!document.body.classList.contains('dark')));
+    </script>
+
+  </body>
+</html>

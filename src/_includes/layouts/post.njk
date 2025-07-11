@@ -1,0 +1,22 @@
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+<article class="blog-post">
+  {% if featured_image %}
+      {% image featured_image, title, "post-hero-image"  %}
+  {% endif %}
+  <h1>{{ title }}</h1>
+  {% if date %}
+    <p class="post-date">{{ date | date("d MMM, yyyy") }}</p>
+  {% endif %}
+  {% if tags %}
+    <div class="post-tags">
+    {% for tag in tags %}
+      <a href="/tags/{{ tag | slug }}/" class="post-tag-link">#{{ tag }}</a>{% if not loop.last %} {% endif %}
+    {% endfor %}
+    </div>
+  {% endif %}
+  <hr/>
+  {{ content | safe }}
+</article>
+{% endblock %}

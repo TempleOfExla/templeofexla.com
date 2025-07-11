@@ -1,0 +1,50 @@
+---
+layout: layouts/base.njk
+title: All Blog Entries
+pagination:
+  data: collections.posts
+  size: 10
+  alias: posts
+  reverse: true
+permalink: "/blog/{% if pagination.pageNumber > 0 %}page/{{ pagination.pageNumber + 1 }}/{% endif %}index.html"
+---
+
+<h1>Blog</h1>
+
+<a href="/tags/">Post Tags</a>
+
+<ul class="blog-list">
+  {% for post in posts.reverse() %}
+    <li class="blog-list-item">
+      {% if post.data.featured_image %}
+        {% image post.data.featured_image, post.data.title, "post-hero-image" %}
+      {% endif %}
+      <div class="recent-meta">
+        <div class="recent-meta-row">
+          <span class="blog-list-date">{{ post.date | date("d MMM, yyyy") }}</span>
+          {% if post.data.tags %}
+            <div class="blog-list-tags">
+              {% for tag in post.data.tags %}
+                <a href="/tags/{{ tag | slug }}/" class="blog-list-tag">#{{ tag }}</a>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+        <h3 style="margin:0;"><a href="{{ post.url }}" class="blog-list-title">{{ post.data.title }}</a></h3>
+        {% if post.data.summary %}
+          <p class="blog-list-summary">{{ post.data.summary }}</p>
+        {% endif %}
+      </div>
+    </li>
+  {% endfor %}
+</ul>
+
+<div class="pagination">
+  {% if pagination.href.previous %}
+    <a href="{{ pagination.href.previous }}">← Newer</a>
+  {% endif %}
+  <span>Page {{ pagination.pageNumber + 1 }} of {{ pagination.pages.length }}</span>
+  {% if pagination.href.next %}
+    <a href="{{ pagination.href.next }}">Older →</a>
+  {% endif %}
+</div>

@@ -1,0 +1,40 @@
+---
+layout: layouts/base.njk
+title: Index
+---
+
+<div class="hero-block">
+
+  {% image "src/images/exla-01.png", "dusk on my mind", "hero-image" %}
+
+  <h1>{{ site. title }}</h1>
+  <p class="subtitle">
+    {{ site.description }}
+  </p>
+
+</div>
+
+<div class="section-title">Recent Publications</div>
+
+
+{% set posts = collections.posts | featuredFirst(4) %}
+<div class="post-grid">
+{% for post in posts %}
+  <div class="post-square">
+    {% if post.data.featured_image %}
+    <div class="post-square-bg"
+         style="background-image: url('{% imageUrl post.data.featured_image, 400, "png" %}');"></div>
+    {% endif %}
+    <div class="post-square-content">
+      <div class="post-square-date">{{ post.date | date("d MMM, yyyy") }}</div>
+      {% if post.data.tags %}
+        <div class="post-square-tags">
+          {% for tag in post.data.tags %}#{{ tag }}{% if not loop.last %}, {% endif %}{% endfor %}
+        </div>
+      {% endif %}
+      <a class="post-square-title" href="{{ post.url }}">{{ post.data.title }}</a>
+    </div>
+  </div>
+{% endfor %}
+</div>
+<a href="/blog/" class="view-more-btn">View More</a>
