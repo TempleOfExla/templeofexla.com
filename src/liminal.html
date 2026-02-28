@@ -2358,31 +2358,31 @@ function fireTone(hz) {
   if (!CH.tones.enabled) return;
   if (!analyser) startViz();
 
-  const _do = () => {
-    const { attack, decay, sustain, release, hold } = TONE_ADSR;
-    const dur = attack + decay + hold + release;
-    const osc = audioCtx.createOscillator();
-    const env = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = hz;
+  // Resume synchronously within the gesture handler — iOS requires audio
+  // operations to stay in the synchronous call stack of the user gesture.
+  if (audioCtx.state === 'suspended') audioCtx.resume();
 
-    const now = audioCtx.currentTime;
-    env.gain.setValueAtTime(0, now);
-    env.gain.linearRampToValueAtTime(1,       now + attack);
-    env.gain.linearRampToValueAtTime(sustain, now + attack + decay);
-    env.gain.setValueAtTime(sustain,          now + attack + decay + hold);
-    env.gain.linearRampToValueAtTime(0,       now + attack + decay + hold + release);
+  const { attack, decay, sustain, release, hold } = TONE_ADSR;
+  const dur = attack + decay + hold + release;
+  const osc = audioCtx.createOscillator();
+  const env = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = hz;
 
-    osc.connect(env);
-    env.connect(tonesPan);
-    if (reverbEnabled) { initReverb(); env.connect(reverbNode); }
-    osc.start(now);
-    osc.stop(now + dur + 0.1);
-    markTonePlaying(hz, dur);
-  };
+  // Schedule slightly ahead so the tone fires after any pending resume completes
+  const now = audioCtx.currentTime + 0.08;
+  env.gain.setValueAtTime(0, now);
+  env.gain.linearRampToValueAtTime(1,       now + attack);
+  env.gain.linearRampToValueAtTime(sustain, now + attack + decay);
+  env.gain.setValueAtTime(sustain,          now + attack + decay + hold);
+  env.gain.linearRampToValueAtTime(0,       now + attack + decay + hold + release);
 
-  if (audioCtx.state === 'suspended') audioCtx.resume().then(_do);
-  else _do();
+  osc.connect(env);
+  env.connect(tonesPan);
+  if (reverbEnabled) { initReverb(); env.connect(reverbNode); }
+  osc.start(now);
+  osc.stop(now + dur + 0.2);
+  markTonePlaying(hz, dur);
 }
 
 function fireToneAt(hz, absCtxTime) {
@@ -3600,10 +3600,10 @@ document.getElementById('power-btn').addEventListener('click', () => {
   if (!analyser && audioCtx) startViz();
 }, { once: false });
 
-// Resume AudioContext on any interaction (Safari)
+// Resume AudioContext on any interaction (iOS Safari re-suspends between gestures)
 document.addEventListener('click', () => {
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-}, { once: true });
+});
 
 // Load persisted user programs
 initUserPrograms();
