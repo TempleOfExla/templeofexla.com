@@ -7,20 +7,38 @@
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:       #080a0d;
-  --bg2:      #0d1117;
-  --surface:  #111620;
-  --border:   #1e2535;
-  --border2:  #2a3548;
-  --cyan:     #00e5cc;
-  --cyan-dim: #00664d;
-  --cyan-glow:#00e5cc44;
-  --text:     #c8d8e8;
-  --muted:    #4a5a70;
-  --muted2:   #2a3548;
-  --danger:   #e05050;
-  --mono:     'Share Tech Mono', monospace;
-  --serif:    'Cormorant Garamond', serif;
+  --bg:        #080a0d;
+  --bg2:       #0d1117;
+  --surface:   #111620;
+  --border:    #1e2535;
+  --border2:   #2a3548;
+  --cyan:      #00e5cc;
+  --cyan-dim:  #00664d;
+  --cyan-glow: #00e5cc44;
+  --text:      #c8d8e8;
+  --muted:     #4a5a70;
+  --muted2:    #2a3548;
+  --dim:       #303c50;
+  --danger:    #e05050;
+  --mono:      'Share Tech Mono', monospace;
+  --serif:     'Cormorant Garamond', serif;
+  --beat-period: 0.1s;
+}
+
+[data-theme="light"] {
+  --bg:        #eef1f6;
+  --bg2:       #f5f7fa;
+  --surface:   #ffffff;
+  --border:    #d0d8e8;
+  --border2:   #b0bcd0;
+  --cyan:      #0077aa;
+  --cyan-dim:  #cce8f4;
+  --cyan-glow: #0077aa33;
+  --text:      #1a2535;
+  --muted:     #6a7a90;
+  --muted2:    #d0d8e8;
+  --dim:       #9aaabb;
+  --danger:    #cc2020;
 }
 
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -42,8 +60,8 @@ body::before {
   content: '';
   position: fixed; inset: 0; pointer-events: none;
   background-image:
-    linear-gradient(rgba(0,229,204,.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,229,204,.025) 1px, transparent 1px);
+    linear-gradient(var(--cyan-glow) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cyan-glow) 1px, transparent 1px);
   background-size: 40px 40px;
   z-index: 0;
 }
@@ -65,6 +83,19 @@ body::after {
 header {
   text-align: center;
   margin-bottom: 48px;
+  position: relative;
+}
+
+.theme-toggle {
+  position: absolute; top: 0; right: 0;
+  background: none; border: 1px solid var(--border);
+  border-radius: 50%; width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); cursor: pointer;
+  transition: all .2s;
+}
+.theme-toggle:hover {
+  border-color: var(--cyan); color: var(--cyan);
 }
 
 .app-name {
@@ -96,6 +127,7 @@ canvas#viz {
   display: block;
   width: 100%;
   height: 96px;
+  transition: height .3s ease;
 }
 
 .viz-label {
@@ -105,9 +137,19 @@ canvas#viz {
 }
 
 .viz-freq {
-  position: absolute; top: 8px; right: 12px;
+  position: absolute; top: 8px; right: 42px;
   font-size: 11px; color: var(--cyan);
 }
+
+.viz-mode-btn {
+  position: absolute; top: 5px; right: 10px;
+  background: none; border: none;
+  color: var(--muted); font-size: 13px;
+  cursor: pointer; padding: 2px 4px;
+  line-height: 1; border-radius: 2px;
+  transition: color .2s;
+}
+.viz-mode-btn:hover { color: var(--cyan); }
 
 /* ── POWER BUTTON ── */
 .power-row {
@@ -193,6 +235,23 @@ canvas#viz {
 @keyframes pulse-ring {
   0%, 100% { transform: scale(1);   opacity: .6; }
   50%       { transform: scale(1.15); opacity: .2; }
+}
+
+/* Beat-frequency pulse ring */
+.power-btn::after {
+  content: '';
+  position: absolute; inset: -14px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  pointer-events: none;
+}
+.power-btn.active::after {
+  border-color: var(--cyan);
+  animation: beat-ring var(--beat-period, 0.1s) ease-out infinite;
+}
+@keyframes beat-ring {
+  0%   { transform: scale(1);    opacity: 0.7; }
+  100% { transform: scale(1.35); opacity: 0;   }
 }
 
 /* ── PRESETS ── */
@@ -1150,13 +1209,22 @@ input[type=range]::-moz-range-thumb {
   <header>
     <h1 class="app-name">Liminal</h1>
     <p class="app-sub">Brainwave Entrainment · Multi-Layer Audio</p>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">
+      <svg id="theme-icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+      <svg id="theme-icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+    </button>
   </header>
 
   <!-- Visualiser -->
-  <div class="visualiser-wrap">
+  <div class="visualiser-wrap" id="viz-wrap">
     <canvas id="viz" width="680" height="96"></canvas>
-    <span class="viz-label">Waveform</span>
+    <span class="viz-label" id="viz-label">Waveform</span>
     <span class="viz-freq" id="viz-freq">—</span>
+    <button class="viz-mode-btn" id="viz-mode-btn" onclick="toggleVizMode()" title="Switch visualiser mode">⟳</button>
   </div>
 
   <!-- Power + Timer -->
@@ -1799,6 +1867,25 @@ function stopDrift() {
   driftLfo = null; driftGain = null;
 }
 
+function toggleTheme() {
+  const light = document.documentElement.getAttribute('data-theme') === 'light';
+  const next  = light ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('liminal-theme', next);
+  document.getElementById('theme-icon-moon').style.display = next === 'light' ? 'none'  : '';
+  document.getElementById('theme-icon-sun').style.display  = next === 'light' ? ''      : 'none';
+}
+
+// Apply saved theme on load
+(function() {
+  const saved = localStorage.getItem('liminal-theme') || 'dark';
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.getElementById('theme-icon-moon').style.display = 'none';
+    document.getElementById('theme-icon-sun').style.display  = '';
+  }
+})();
+
 function toggleDrift(enabled) {
   driftEnabled = enabled;
   if (isPlaying && CH.binaural.enabled) {
@@ -2268,30 +2355,34 @@ function loadOceanFile(file) {
 function fireTone(hz) {
   initAudio();
   if (!tonesPan) return;
-  if (audioCtx.state === 'suspended') audioCtx.resume();
   if (!CH.tones.enabled) return;
   if (!analyser) startViz();
 
-  const { attack, decay, sustain, release, hold } = TONE_ADSR;
-  const dur = attack + decay + hold + release;
-  const osc = audioCtx.createOscillator();
-  const env = audioCtx.createGain();
-  osc.type = 'sine';
-  osc.frequency.value = hz;
+  const _do = () => {
+    const { attack, decay, sustain, release, hold } = TONE_ADSR;
+    const dur = attack + decay + hold + release;
+    const osc = audioCtx.createOscillator();
+    const env = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = hz;
 
-  const now = audioCtx.currentTime;
-  env.gain.setValueAtTime(0, now);
-  env.gain.linearRampToValueAtTime(1,       now + attack);
-  env.gain.linearRampToValueAtTime(sustain, now + attack + decay);
-  env.gain.setValueAtTime(sustain,          now + attack + decay + hold);
-  env.gain.linearRampToValueAtTime(0,       now + attack + decay + hold + release);
+    const now = audioCtx.currentTime;
+    env.gain.setValueAtTime(0, now);
+    env.gain.linearRampToValueAtTime(1,       now + attack);
+    env.gain.linearRampToValueAtTime(sustain, now + attack + decay);
+    env.gain.setValueAtTime(sustain,          now + attack + decay + hold);
+    env.gain.linearRampToValueAtTime(0,       now + attack + decay + hold + release);
 
-  osc.connect(env);
-  env.connect(tonesPan);
-  if (reverbEnabled) { initReverb(); env.connect(reverbNode); }
-  osc.start(now);
-  osc.stop(now + dur + 0.1);
-  markTonePlaying(hz, dur);
+    osc.connect(env);
+    env.connect(tonesPan);
+    if (reverbEnabled) { initReverb(); env.connect(reverbNode); }
+    osc.start(now);
+    osc.stop(now + dur + 0.1);
+    markTonePlaying(hz, dur);
+  };
+
+  if (audioCtx.state === 'suspended') audioCtx.resume().then(_do);
+  else _do();
 }
 
 function fireToneAt(hz, absCtxTime) {
@@ -2403,14 +2494,20 @@ function applyPreset(name) {
   updateSliderFill('sl-beat',    beatFreq,    0.1, 100);
   updateSliderFill('sl-carrier', carrierFreq, 80,  500);
 
+  _updateBeatPulse();
   if (isPlaying) updateBinauralFreqs();
   updateInfoBar();
+}
+
+function _updateBeatPulse() {
+  document.documentElement.style.setProperty('--beat-period', (1 / beatFreq).toFixed(4) + 's');
 }
 
 function updateBeat(v) {
   beatFreq = parseFloat(v);
   document.getElementById('val-beat').value = beatFreq.toFixed(1);
   updateSliderFill('sl-beat', beatFreq, 0.1, 100);
+  _updateBeatPulse();
   clearPresetActive();
   if (isPlaying) updateBinauralFreqs();
   updateInfoBar();
@@ -2423,6 +2520,7 @@ function setBeatDirect(v) {
   document.getElementById('val-beat').value = beatFreq.toFixed(2);
   document.getElementById('sl-beat').value  = Math.min(100, beatFreq);
   updateSliderFill('sl-beat', beatFreq, 0.1, 100);
+  _updateBeatPulse();
   clearPresetActive();
   if (isPlaying) updateBinauralFreqs();
   updateInfoBar();
@@ -3297,30 +3395,84 @@ function makeProgCard(prog, loadFn, delFn) {
 
 const canvas = document.getElementById('viz');
 const ctx2d  = canvas.getContext('2d');
-let analyser = null;
-let vizData  = null;
-let vizRaf   = null;
+// ── Visualiser ────────────────────────────────────────
+
+let analyser     = null;
+let analyserL    = null;
+let analyserR    = null;
+let vizData      = null;
+let vizDataL     = null;
+let vizDataR     = null;
+let vizRaf       = null;
+let vizMode      = 'waveform';  // 'waveform' | 'lissajous'
+
+const VIZ_H_WAVE = 96;
+const VIZ_H_LISS = 200;
 
 function startViz() {
   if (!audioCtx || analyser) return;
+
+  // Mono analyser for waveform
   analyser = audioCtx.createAnalyser();
   analyser.fftSize = 2048;
   analyser.smoothingTimeConstant = 0.85;
   masterGain.connect(analyser);
   vizData = new Uint8Array(analyser.frequencyBinCount);
+
+  // Stereo split for Lissajous
+  const splitter = audioCtx.createChannelSplitter(2);
+  masterGain.connect(splitter);
+
+  analyserL = audioCtx.createAnalyser();
+  analyserR = audioCtx.createAnalyser();
+  analyserL.fftSize = 2048; analyserL.smoothingTimeConstant = 0.6;
+  analyserR.fftSize = 2048; analyserR.smoothingTimeConstant = 0.6;
+  splitter.connect(analyserL, 0);
+  splitter.connect(analyserR, 1);
+  vizDataL = new Float32Array(analyserL.fftSize);
+  vizDataR = new Float32Array(analyserR.fftSize);
+
   if (!vizRaf) drawViz();
+}
+
+function toggleVizMode() {
+  vizMode = vizMode === 'waveform' ? 'lissajous' : 'waveform';
+  const h = vizMode === 'lissajous' ? VIZ_H_LISS : VIZ_H_WAVE;
+  canvas.height = h;
+  canvas.style.height = h + 'px';
+  document.getElementById('viz-label').textContent =
+    vizMode === 'lissajous' ? 'Lissajous' : 'Waveform';
 }
 
 function drawViz() {
   vizRaf = requestAnimationFrame(drawViz);
+  if (vizMode === 'lissajous') drawLissajous();
+  else                         drawWaveformViz();
+}
 
+function _vizColors() {
+  const light = document.documentElement.getAttribute('data-theme') === 'light';
+  return {
+    bg:     light ? '#f0f4f8' : '#0d1117',
+    bgFade: light ? 'rgba(240,244,248,0.18)' : 'rgba(13,17,23,0.18)',
+    grid:   light ? 'rgba(0,140,160,.06)'    : 'rgba(0,229,204,.04)',
+    midline:light ? 'rgba(0,140,160,.15)'    : 'rgba(0,229,204,.08)',
+    glow:   light ? '#007799'                : '#00e5cc',
+    stroke: light ? 'rgba(0,120,150,.5)'     : 'rgba(0,229,204,.4)',
+    bright: light ? '#006688'                : '#00e5cc',
+    idle:   light ? 'rgba(0,120,150,.3)'     : 'rgba(0,229,204,.2)',
+  };
+}
+
+function drawWaveformViz() {
   const W = canvas.width;
   const H = canvas.height;
+  const c = _vizColors();
 
-  ctx2d.fillStyle = '#0d1117';
+  ctx2d.fillStyle = c.bg;
   ctx2d.fillRect(0, 0, W, H);
 
-  ctx2d.strokeStyle = 'rgba(0,229,204,.04)';
+  ctx2d.strokeStyle = c.grid;
   ctx2d.lineWidth = 1;
   for (let x = 0; x < W; x += 40) {
     ctx2d.beginPath(); ctx2d.moveTo(x, 0); ctx2d.lineTo(x, H); ctx2d.stroke();
@@ -3328,34 +3480,30 @@ function drawViz() {
   for (let y = 0; y < H; y += 24) {
     ctx2d.beginPath(); ctx2d.moveTo(0, y); ctx2d.lineTo(W, y); ctx2d.stroke();
   }
-
-  ctx2d.strokeStyle = 'rgba(0,229,204,.08)';
+  ctx2d.strokeStyle = c.midline;
   ctx2d.beginPath(); ctx2d.moveTo(0, H/2); ctx2d.lineTo(W, H/2); ctx2d.stroke();
 
   if (!isPlaying || !analyser) {
-    ctx2d.strokeStyle = 'rgba(0,229,204,.2)';
+    ctx2d.strokeStyle = c.idle;
     ctx2d.lineWidth = 1.5;
-    ctx2d.beginPath();
-    ctx2d.moveTo(0, H/2); ctx2d.lineTo(W, H/2);
-    ctx2d.stroke();
+    ctx2d.beginPath(); ctx2d.moveTo(0, H/2); ctx2d.lineTo(W, H/2); ctx2d.stroke();
     return;
   }
 
   analyser.getByteTimeDomainData(vizData);
 
   ctx2d.shadowBlur = 8;
-  ctx2d.shadowColor = '#00e5cc';
-  ctx2d.strokeStyle = 'rgba(0,229,204,.35)';
+  ctx2d.shadowColor = c.glow;
+  ctx2d.strokeStyle = c.stroke;
   ctx2d.lineWidth = 3;
-  drawWaveform(W, H);
+  _drawWaveformPath(W, H);
   ctx2d.shadowBlur = 0;
-
-  ctx2d.strokeStyle = '#00e5cc';
+  ctx2d.strokeStyle = c.bright;
   ctx2d.lineWidth = 1.5;
-  drawWaveform(W, H);
+  _drawWaveformPath(W, H);
 }
 
-function drawWaveform(W, H) {
+function _drawWaveformPath(W, H) {
   const sliceW = W / vizData.length;
   ctx2d.beginPath();
   for (let i = 0; i < vizData.length; i++) {
@@ -3365,6 +3513,62 @@ function drawWaveform(W, H) {
     else ctx2d.lineTo(i * sliceW, y);
   }
   ctx2d.stroke();
+}
+
+function drawLissajous() {
+  const W  = canvas.width;
+  const H  = canvas.height;
+  const cx = W / 2;
+  const cy = H / 2;
+  const r  = (H / 2) * 0.82;
+  const c  = _vizColors();
+
+  // Persistence: semi-transparent fill instead of full clear
+  ctx2d.fillStyle = c.bgFade;
+  ctx2d.fillRect(0, 0, W, H);
+
+  // Crosshairs
+  ctx2d.strokeStyle = c.grid;
+  ctx2d.lineWidth = 1;
+  ctx2d.beginPath(); ctx2d.moveTo(cx, 0); ctx2d.lineTo(cx, H); ctx2d.stroke();
+  ctx2d.beginPath(); ctx2d.moveTo(0, cy); ctx2d.lineTo(W, cy); ctx2d.stroke();
+  // Circle guide
+  ctx2d.beginPath();
+  ctx2d.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx2d.strokeStyle = c.grid;
+  ctx2d.stroke();
+
+  if (!isPlaying || !analyserL || !analyserR) {
+    // Idle: draw a static diagonal line (mono)
+    ctx2d.strokeStyle = c.idle;
+    ctx2d.lineWidth = 1.5;
+    ctx2d.beginPath();
+    ctx2d.moveTo(cx - r * 0.6, cy + r * 0.6);
+    ctx2d.lineTo(cx + r * 0.6, cy - r * 0.6);
+    ctx2d.stroke();
+    return;
+  }
+
+  analyserL.getFloatTimeDomainData(vizDataL);
+  analyserR.getFloatTimeDomainData(vizDataR);
+
+  const len = vizDataL.length;
+  const step = Math.max(1, Math.floor(len / 1024));  // max 1024 points
+
+  ctx2d.shadowBlur = 6;
+  ctx2d.shadowColor = c.glow;
+  ctx2d.strokeStyle = c.stroke;
+  ctx2d.lineWidth = 1.8;
+  ctx2d.beginPath();
+  let first = true;
+  for (let i = 0; i < len; i += step) {
+    const x = cx + vizDataL[i] * r;
+    const y = cy - vizDataR[i] * r;
+    if (first) { ctx2d.moveTo(x, y); first = false; }
+    else ctx2d.lineTo(x, y);
+  }
+  ctx2d.stroke();
+  ctx2d.shadowBlur = 0;
 }
 
 // ══════════════════════════════════════════════════════
@@ -3386,6 +3590,7 @@ updateSliderFill('sl-ch-tones-vol',    CH.tones.vol,    0, 1);
 
 // Render dynamic content
 renderTonePalette();
+_updateBeatPulse();
 
 // Start idle visualiser loop
 drawViz();
