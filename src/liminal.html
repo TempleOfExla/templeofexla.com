@@ -2356,7 +2356,8 @@ function fireTone(hz) {
   initAudio();
   if (!tonesPan) return;
   if (!CH.tones.enabled) return;
-  if (!analyser) startViz();
+  // Do NOT call startViz() here — stereo splitter setup can throw on mono
+  // mobile pipelines and would silently abort the rest of this function.
 
   // Resume synchronously within the gesture handler — iOS requires audio
   // operations to stay in the synchronous call stack of the user gesture.
@@ -3419,18 +3420,24 @@ function startViz() {
   masterGain.connect(analyser);
   vizData = new Uint8Array(analyser.frequencyBinCount);
 
-  // Stereo split for Lissajous
-  const splitter = audioCtx.createChannelSplitter(2);
-  masterGain.connect(splitter);
-
-  analyserL = audioCtx.createAnalyser();
-  analyserR = audioCtx.createAnalyser();
-  analyserL.fftSize = 2048; analyserL.smoothingTimeConstant = 0.6;
-  analyserR.fftSize = 2048; analyserR.smoothingTimeConstant = 0.6;
-  splitter.connect(analyserL, 0);
-  splitter.connect(analyserR, 1);
-  vizDataL = new Float32Array(analyserL.fftSize);
-  vizDataR = new Float32Array(analyserR.fftSize);
+  // Stereo split for Lissajous — wrapped in try/catch because mono mobile
+  // pipelines can throw an IndexSizeError on splitter output 1
+  try {
+    const splitter = audioCtx.createChannelSplitter(2);
+    masterGain.connect(splitter);
+    analyserL = audioCtx.createAnalyser();
+    analyserR = audioCtx.createAnalyser();
+    analyserL.fftSize = 2048; analyserL.smoothingTimeConstant = 0.6;
+    analyserR.fftSize = 2048; analyserR.smoothingTimeConstant = 0.6;
+    splitter.connect(analyserL, 0);
+    splitter.connect(analyserR, 1);
+    vizDataL = new Float32Array(analyserL.fftSize);
+    vizDataR = new Float32Array(analyserR.fftSize);
+  } catch(e) {
+    // Lissajous unavailable on this device; waveform mode still works
+    analyserL = null; analyserR = null;
+    if (vizMode === 'lissajous') vizMode = 'waveform';
+  }
 
   if (!vizRaf) drawViz();
 }
