@@ -30,8 +30,19 @@ export default async function(eleventyConfig) {
   eleventyConfig.addCollection("posts", function(collectionApi) {
     return collectionApi.getFilteredByGlob("src/blog/posts/**/*.md").filter(post => !post.data.draft).reverse();
   });
+
+  // Category collections
+  const categories = ["navigation", "philosophy", "audio", "field-notes", "discourse"];
+  for (const cat of categories) {
+    eleventyConfig.addCollection(`cat_${cat.replace("-", "_")}`, function(collectionApi) {
+      return collectionApi.getFilteredByGlob("src/blog/posts/**/*.md")
+        .filter(post => !post.data.draft && post.data.category === cat)
+        .reverse();
+    });
+  }
  
   eleventyConfig.addPassthroughCopy("src/styles.css");
+  eleventyConfig.addPassthroughCopy("src/liminal.html");
 
   eleventyConfig.addFilter("featuredFirst", (arr, count = 3) => {
     const featured = arr.filter(post => post.data && post.data.featured);

@@ -4,6 +4,7 @@ title: "Guided Meditation: A Visit to the Lake in Tom’s Park"
 date: 2025-07-09
 summary: "A step-by-step guided meditation for beginners using Tom’s Park by Thomas Campbell, with the intention of visiting the Lake and playing to find out. This journey is one example—Tom’s Park offers endless possibilities for inner exploration."
 featured_image: src/blog/posts/2025/toms-park-01/tpalbumart.png
+category: navigation
 tags:
   - meditation
   - guided meditation

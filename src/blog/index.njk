@@ -9,32 +9,28 @@ pagination:
 permalink: "/blog/{% if pagination.pageNumber > 0 %}page/{{ pagination.pageNumber + 1 }}/{% endif %}index.html"
 ---
 
-<h1>Blog</h1>
-
-<a href="/tags/">Post Tags</a>
+<div class="blog-index-header">
+  <h1>Writing</h1>
+  <a href="/tags/">Browse by tag</a>
+</div>
 
 <ul class="blog-list">
   {% for post in posts.reverse() %}
     <li class="blog-list-item">
-      {% if post.data.featured_image %}
-        {% image post.data.featured_image, post.data.title, "post-hero-image" %}
-      {% endif %}
-      <div class="recent-meta">
-        <div class="recent-meta-row">
-          <span class="blog-list-date">{{ post.date | date("d MMM, yyyy") }}</span>
-          {% if post.data.tags %}
-            <div class="blog-list-tags">
-              {% for tag in post.data.tags %}
-                <a href="/tags/{{ tag | slug }}/" class="blog-list-tag">#{{ tag }}</a>
-              {% endfor %}
-            </div>
-          {% endif %}
-        </div>
-        <h3 style="margin:0;"><a href="{{ post.url }}" class="blog-list-title">{{ post.data.title }}</a></h3>
-        {% if post.data.summary %}
-          <p class="blog-list-summary">{{ post.data.summary }}</p>
+      <div class="recent-meta-row">
+        <span class="blog-list-date">{{ post.date | date("d MMM, yyyy") }}</span>
+        {% if post.data.tags %}
+          <div class="blog-list-tags">
+            {% for tag in post.data.tags %}
+              <a href="/tags/{{ tag | slug }}/" class="blog-list-tag">#{{ tag }}</a>
+            {% endfor %}
+          </div>
         {% endif %}
       </div>
+      <h3><a href="{{ post.url }}" class="blog-list-title">{{ post.data.title }}</a></h3>
+      {% if post.data.summary %}
+        <p class="blog-list-summary">{{ post.data.summary }}</p>
+      {% endif %}
     </li>
   {% endfor %}
 </ul>
