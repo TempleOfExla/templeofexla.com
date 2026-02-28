@@ -1197,6 +1197,39 @@ input[type=range]::-moz-range-thumb {
   text-align: center !important;
   margin-right: 4px;
 }
+
+.seq-cue-adsr {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 4px;
+  border-left: 1px solid var(--border);
+  padding-left: 6px;
+}
+
+.seq-cue-adsr-input {
+  width: 38px !important;
+  padding: 2px 3px !important;
+  font-size: 10px !important;
+  text-align: center !important;
+}
+
+.tone-tile-custom-hz {
+  width: 52px;
+  font-size: 11px;
+  text-align: center;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255,255,255,0.25);
+  color: var(--text);
+  font-family: var(--mono);
+  padding: 1px 2px;
+  pointer-events: auto;
+  touch-action: manipulation;
+  display: block;
+  margin: 2px auto;
+}
+.tone-tile-custom-hz:focus { outline: none; border-bottom-color: var(--cyan); }
 </style>
 </head>
 <body>
@@ -1670,12 +1703,15 @@ const SACRED_FREQS = [
   { hz: 741,  name: 'Awaken',     color: '#3355bb', chakra: 'Third Eye',  desc: 'Intuition, expression' },
   { hz: 852,  name: 'Return',     color: '#552299', chakra: 'Third Eye+', desc: 'Spiritual order' },
   { hz: 963,  name: 'Divine',     color: '#7711bb', chakra: 'Crown',      desc: 'Unity consciousness' },
+  { hz: null, name: 'Custom',    color: '#4a4a6e', chakra: '—',          desc: 'User-defined frequency', custom: true },
 ];
+let customToneHz = 440;
 
 // ── Sequencer State ──────────────────────────────────
 let seqEnabled           = false;
 let seqLoop              = false;
 let _seqPrevSessionDur   = 0;
+let _seqCurrentStep      = -1;
 let seqSteps        = [
   { beat: 10, carrier: 432, holdSecs: 300, rampSecs:   0, toneCues: [] },
   { beat:  7, carrier: 396, holdSecs: 300, rampSecs: 120, toneCues: [] },
@@ -2358,9 +2394,10 @@ function fireTone(hz) {
   markTonePlaying(hz, dur);
 }
 
-function fireToneAt(hz, absCtxTime) {
+function fireToneAt(hz, absCtxTime, adsrOverride) {
   if (!tonesPan) return;
-  const { attack, decay, sustain, release, hold } = TONE_ADSR;
+  const adsr = adsrOverride ? Object.assign({}, TONE_ADSR, adsrOverride) : TONE_ADSR;
+  const { attack, decay, sustain, release, hold } = adsr;
   const dur = attack + decay + hold + release;
   const osc = audioCtx.createOscillator();
   const env = audioCtx.createGain();
@@ -2382,7 +2419,9 @@ function fireToneAt(hz, absCtxTime) {
 }
 
 function markTonePlaying(hz, dur) {
-  const tile = document.getElementById('tone-tile-' + hz);
+  const sf = SACRED_FREQS.find(f => f.hz === hz);
+  const id = sf ? 'tone-tile-' + hz : 'tone-tile-custom';
+  const tile = document.getElementById(id);
   if (!tile) return;
   tile.classList.add('playing');
   setTimeout(() => tile.classList.remove('playing'), dur * 1000);
@@ -2399,7 +2438,7 @@ function scheduleToneAutoNext(hz) {
   if (!cfg || !cfg.enabled) return;
   const delay = (cfg.min + Math.random() * (cfg.max - cfg.min)) * 1000;
   cfg.timerId = setTimeout(() => {
-    if (isPlaying && CH.tones.enabled) fireTone(hz);
+    if (isPlaying && CH.tones.enabled) fireTone(hz === 'custom' ? customToneHz : hz);
     scheduleToneAutoNext(hz);
   }, delay);
 }
@@ -2408,7 +2447,7 @@ function scheduleToneCues(t0) {
   let stepStart = 0;
   for (const step of seqSteps) {
     for (const cue of (step.toneCues || [])) {
-      if (CH.tones.enabled) fireToneAt(cue.hz, t0 + stepStart + cue.atSecs);
+      if (CH.tones.enabled) fireToneAt(cue.hz, t0 + stepStart + cue.atSecs, cue.adsr);
     }
     stepStart += step.rampSecs + step.holdSecs;
   }
@@ -2648,30 +2687,49 @@ function renderTonePalette() {
   SACRED_FREQS.forEach(freq => {
     const tile = document.createElement('button');
     tile.className = 'tone-tile';
-    tile.id = 'tone-tile-' + freq.hz;
     tile.style.setProperty('--tile-color', freq.color);
     tile.title = freq.desc;
     tile.type = 'button';
-    tile.innerHTML =
-      `<span class="tone-tile-name">${freq.name}</span>` +
-      `<span class="tone-tile-hz">${freq.hz} Hz</span>` +
-      `<span class="tone-tile-chakra">${freq.chakra}</span>` +
-      `<button class="tone-auto-btn" type="button" title="Auto-schedule" onclick="event.stopPropagation();toggleToneAutoUI(${freq.hz})">⏱</button>`;
-    tile.onclick = () => fireTone(freq.hz);
+
+    if (freq.custom) {
+      tile.id = 'tone-tile-custom';
+      tile.innerHTML =
+        `<span class="tone-tile-name">${freq.name}</span>` +
+        `<input type="number" class="tone-tile-custom-hz" id="custom-tone-hz" ` +
+          `value="${customToneHz}" min="1" max="20000" step="1" ` +
+          `onclick="event.stopPropagation()" ` +
+          `oninput="customToneHz=Math.max(1,parseFloat(this.value)||440)">` +
+        `<span class="tone-tile-chakra">Hz</span>` +
+        `<button class="tone-auto-btn" type="button" title="Auto-schedule" ` +
+          `onclick="event.stopPropagation();toggleToneAutoUI('custom')">⏱</button>`;
+      tile.onclick = e => {
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') fireTone(customToneHz);
+      };
+    } else {
+      tile.id = 'tone-tile-' + freq.hz;
+      tile.innerHTML =
+        `<span class="tone-tile-name">${freq.name}</span>` +
+        `<span class="tone-tile-hz">${freq.hz} Hz</span>` +
+        `<span class="tone-tile-chakra">${freq.chakra}</span>` +
+        `<button class="tone-auto-btn" type="button" title="Auto-schedule" onclick="event.stopPropagation();toggleToneAutoUI(${freq.hz})">⏱</button>`;
+      tile.onclick = () => fireTone(freq.hz);
+    }
     palette.appendChild(tile);
 
     // Auto-schedule row (hidden initially)
+    const key = freq.custom ? 'custom' : freq.hz;
+    const label = freq.custom ? 'Custom' : freq.name;
     const autoRow = document.createElement('div');
     autoRow.className = 'tone-auto-row';
-    autoRow.id = 'tone-auto-row-' + freq.hz;
+    autoRow.id = 'tone-auto-row-' + key;
     autoRow.innerHTML =
-      `<span class="tone-auto-label">${freq.name} every</span>` +
-      `<input type="number" class="seq-input tone-auto-input" id="tone-auto-min-${freq.hz}" value="60" min="10" max="3600">` +
+      `<span class="tone-auto-label">${label} every</span>` +
+      `<input type="number" class="seq-input tone-auto-input" id="tone-auto-min-${key}" value="60" min="10" max="3600">` +
       `<span class="tone-auto-label">–</span>` +
-      `<input type="number" class="seq-input tone-auto-input" id="tone-auto-max-${freq.hz}" value="180" min="10" max="3600">` +
+      `<input type="number" class="seq-input tone-auto-input" id="tone-auto-max-${key}" value="180" min="10" max="3600">` +
       `<span class="tone-auto-label">s</span>` +
-      `<button class="seq-add-btn tone-auto-start-btn" onclick="startToneAuto(${freq.hz})">On</button>` +
-      `<button class="seq-del-btn tone-auto-stop-btn" onclick="stopToneAuto(${freq.hz})">Off</button>`;
+      `<button class="seq-add-btn tone-auto-start-btn" onclick="startToneAuto(${freq.custom ? "'custom'" : key})">On</button>` +
+      `<button class="seq-del-btn tone-auto-stop-btn" onclick="stopToneAuto(${freq.custom ? "'custom'" : key})">Off</button>`;
     palette.appendChild(autoRow);
   });
 }
@@ -2688,14 +2746,16 @@ function startToneAuto(hz) {
   const min = parseFloat(minEl ? minEl.value : 60) || 60;
   const max = parseFloat(maxEl ? maxEl.value : 180) || 180;
   setToneAuto(hz, true, min, max);
-  const tile = document.getElementById('tone-tile-' + hz);
+  const tileId = hz === 'custom' ? 'tone-tile-custom' : 'tone-tile-' + hz;
+  const tile = document.getElementById(tileId);
   if (tile) tile.classList.add('auto-active');
   toggleToneAutoUI(hz);
 }
 
 function stopToneAuto(hz) {
   setToneAuto(hz, false, 0, 0);
-  const tile = document.getElementById('tone-tile-' + hz);
+  const tileId = hz === 'custom' ? 'tone-tile-custom' : 'tone-tile-' + hz;
+  const tile = document.getElementById(tileId);
   if (tile) tile.classList.remove('auto-active');
   toggleToneAutoUI(hz);
 }
@@ -2836,9 +2896,11 @@ function updateSeqStep(i, field, val) {
   updateSeqTotal();
 }
 
-function addToneCue(stepIdx, hz, atSecs) {
+function addToneCue(stepIdx, hz, atSecs, adsrOverride) {
   if (!seqSteps[stepIdx].toneCues) seqSteps[stepIdx].toneCues = [];
-  seqSteps[stepIdx].toneCues.push({ hz, atSecs: atSecs || 0 });
+  const cue = { hz, atSecs: atSecs || 0 };
+  if (adsrOverride && Object.keys(adsrOverride).length > 0) cue.adsr = adsrOverride;
+  seqSteps[stepIdx].toneCues.push(cue);
   renderSeqSteps();
 }
 
@@ -2904,8 +2966,11 @@ function renderSeqSteps() {
         const chip  = document.createElement('span');
         chip.className = 'tone-cue-chip';
         chip.style.setProperty('--chip-color', color);
+        const adsrStr = cue.adsr
+          ? ` · A${cue.adsr.attack ?? ''}H${cue.adsr.hold ?? ''}R${cue.adsr.release ?? ''}`
+          : '';
         chip.innerHTML =
-          `<span>${cue.hz} Hz @ ${fmtMmSs(cue.atSecs)}</span>` +
+          `<span>${cue.hz} Hz @ ${fmtMmSs(cue.atSecs)}${adsrStr}</span>` +
           `<button class="tone-cue-del" onclick="removeToneCue(${i},${ci})">×</button>`;
         chips.appendChild(chip);
       });
@@ -2934,19 +2999,57 @@ function renderSeqSteps() {
     picker.appendChild(atLabel);
     picker.appendChild(atInput);
 
+    // ADSR override inputs
+    const adsrWrap = document.createElement('span');
+    adsrWrap.className = 'seq-cue-adsr';
+    adsrWrap.title = 'Optional ADSR overrides (leave blank to use global values)';
+    const atkIn  = document.createElement('input');
+    const holdIn = document.createElement('input');
+    const relIn  = document.createElement('input');
+    [atkIn, holdIn, relIn].forEach((inp, idx) => {
+      inp.type = 'number'; inp.min = 0.1; inp.max = 30; inp.step = 0.5;
+      inp.className = 'seq-input seq-cue-adsr-input';
+      inp.placeholder = ['atk','hld','rel'][idx];
+    });
+    adsrWrap.appendChild(atkIn);
+    adsrWrap.appendChild(holdIn);
+    adsrWrap.appendChild(relIn);
+    picker.appendChild(adsrWrap);
+
+    function getPickerAdsr() {
+      const o = {};
+      const a = parseFloat(atkIn.value);
+      const h = parseFloat(holdIn.value);
+      const r = parseFloat(relIn.value);
+      if (!isNaN(a) && atkIn.value !== '') o.attack  = a;
+      if (!isNaN(h) && holdIn.value !== '') o.hold    = h;
+      if (!isNaN(r) && relIn.value  !== '') o.release = r;
+      return o;
+    }
+
     // Tone tiles (small)
     SACRED_FREQS.forEach(freq => {
       const tb = document.createElement('button');
       tb.className = 'tone-tile tone-tile-sm';
       tb.style.setProperty('--tile-color', freq.color);
       tb.title = freq.desc;
-      tb.innerHTML =
-        `<span class="tone-tile-sm-name">${freq.name}</span>` +
-        `<span class="tone-tile-sm-hz">${freq.hz}</span>`;
-      tb.onclick = () => {
-        addToneCue(i, freq.hz, parseMmSs(atInput.value));
-        picker.style.display = 'none';
-      };
+      if (freq.custom) {
+        tb.innerHTML =
+          `<span class="tone-tile-sm-name">Custom</span>` +
+          `<span class="tone-tile-sm-hz">${customToneHz}</span>`;
+        tb.onclick = () => {
+          addToneCue(i, customToneHz, parseMmSs(atInput.value), getPickerAdsr());
+          picker.style.display = 'none';
+        };
+      } else {
+        tb.innerHTML =
+          `<span class="tone-tile-sm-name">${freq.name}</span>` +
+          `<span class="tone-tile-sm-hz">${freq.hz}</span>`;
+        tb.onclick = () => {
+          addToneCue(i, freq.hz, parseMmSs(atInput.value), getPickerAdsr());
+          picker.style.display = 'none';
+        };
+      }
       picker.appendChild(tb);
     });
 
@@ -2996,6 +3099,7 @@ function startSequence() {
   sessionDurationSecs = _seqSchedule.totalSecs;
   startSessionTimer();
 
+  _seqCurrentStep = -1;
   if (!analyser) startViz();
   document.getElementById('seq-progress').style.display = 'block';
   seqTickInterval = setInterval(tickSequence, 100);
@@ -3037,10 +3141,12 @@ function tickSequence() {
 
   let stepLabel = '';
   let stepStart = 0;
+  let currentStepIdx = seqSteps.length - 1;
   for (let i = 0; i < seqSteps.length; i++) {
     const step    = seqSteps[i];
     const stepDur = step.rampSecs + step.holdSecs;
     if (elapsed < stepStart + stepDur || i === seqSteps.length - 1) {
+      currentStepIdx = i;
       const phase = (elapsed - stepStart) < step.rampSecs ? 'ramp' : 'hold';
       stepLabel = `step ${i + 1}/${seqSteps.length} · ${phase} · ${fmtMmSs(Math.max(0, total - elapsed))} left`;
       break;
@@ -3048,6 +3154,26 @@ function tickSequence() {
     stepStart += stepDur;
   }
   document.getElementById('seq-progress-label').textContent = stepLabel;
+
+  // Apply channelVols on step entry
+  if (currentStepIdx !== _seqCurrentStep) {
+    _seqCurrentStep = currentStepIdx;
+    const vols = seqSteps[currentStepIdx].channelVols;
+    if (vols) {
+      const gainNodes = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, iso: isoChGain, tones: tonesChGain };
+      for (const [ch, vol] of Object.entries(vols)) {
+        if (!CH[ch]) continue;
+        const v = Math.max(0, Math.min(1, parseFloat(vol)));
+        CH[ch].vol = v;
+        if (gainNodes[ch]) gainNodes[ch].gain.value = v;
+        updateSliderFill('sl-ch-' + ch + '-vol', v, 0, 1);
+        const sl  = document.getElementById('sl-ch-'  + ch + '-vol');
+        const val = document.getElementById('val-ch-' + ch + '-vol');
+        if (sl)  sl.value = v;
+        if (val) val.textContent = Math.round(v * 100) + '%';
+      }
+    }
+  }
 
   updateInfoBar();
 
