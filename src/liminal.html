@@ -760,6 +760,33 @@ input[type=range]::-moz-range-thumb {
   color: var(--cyan);
 }
 
+/* ── URL IMPORT ROW ── */
+.seq-url-row {
+  display: flex;
+  gap: 6px;
+  padding: 6px 12px 8px;
+  border-top: 1px solid var(--border);
+  align-items: center;
+}
+
+.seq-url-input {
+  flex: 1;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 8px;
+  outline: none;
+  transition: border-color .2s;
+}
+
+.seq-url-input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 5px var(--cyan-glow);
+}
+
 /* ── PROGRAM LIBRARY ── */
 #seq-library {
   border: 1px solid var(--border);
@@ -1667,8 +1694,15 @@ input[type=range]::-moz-range-thumb {
         onblur="seqName=this.value">
       <button class="seq-action-btn" onclick="saveProgram()">Save</button>
       <button class="seq-action-btn" onclick="exportSeq()">↓ JSON</button>
-      <button class="seq-action-btn" onclick="importSeqTrigger()">↑ JSON</button>
+      <button class="seq-action-btn" onclick="importSeqTrigger()">↑ File</button>
+      <button class="seq-action-btn" onclick="toggleUrlImport()">↑ URL</button>
       <button class="seq-action-btn" id="seq-lib-btn" onclick="toggleLibrary()">☰ Library</button>
+    </div>
+    <div class="seq-url-row" id="seq-url-row" style="display:none">
+      <input type="url" class="seq-url-input" id="seq-url-input"
+        placeholder="https://example.com/session.json"
+        onkeydown="if(event.key==='Enter')importSeqFromUrl()">
+      <button class="seq-action-btn" onclick="importSeqFromUrl()">Load</button>
     </div>
     <div id="seq-library" style="display:none"></div>
     <input type="file" id="seq-import-file" accept=".json" style="display:none"
@@ -2458,7 +2492,8 @@ function startOcean() {
 
   // Main wave LFO — 14 s cycle drives level, filter, and pan together
   const lfo = audioCtx.createOscillator();
-  lfo.frequency.value = 0.07;
+//  lfo.frequency.value = 0.07;
+  lfo.frequency.value = 0.0033; // 30 s cycle for a more relaxed swell
 
   // Level swell: base 0.6, ±0.32
   const waveGain      = audioCtx.createGain();
@@ -2634,6 +2669,9 @@ function togglePlay() {
   const btn = document.getElementById('power-btn');
   btn.classList.toggle('active', isPlaying);
 
+  // Start silent audio + MediaSession on first play (requires user gesture)
+  if (isPlaying) setupBackgroundAudio();
+
   if (seqEnabled) {
     if (isPlaying) startSequence();
     else           stopSequence();
@@ -2642,6 +2680,7 @@ function togglePlay() {
     else           stopAudio();
   }
 
+  updateMediaSession(isPlaying);
   updateTimerDisplay();
   updateInfoBar();
 }
@@ -3621,6 +3660,38 @@ function importSeqTrigger() {
   document.getElementById('seq-import-file').click();
 }
 
+function toggleUrlImport() {
+  const row = document.getElementById('seq-url-row');
+  const visible = row.style.display !== 'none';
+  row.style.display = visible ? 'none' : 'flex';
+  if (!visible) document.getElementById('seq-url-input').focus();
+}
+
+function fetchSeqFromUrl(url, { silent = false } = {}) {
+  return fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
+    .then(data => {
+      loadProgram(data);
+      return data;
+    })
+    .catch(err => {
+      if (!silent) alert(`Could not load URL: ${err.message}\n\nThe server must allow cross-origin requests (CORS).`);
+      throw err;
+    });
+}
+
+function importSeqFromUrl() {
+  const url = document.getElementById('seq-url-input').value.trim();
+  if (!url) return;
+  fetchSeqFromUrl(url).then(() => {
+    document.getElementById('seq-url-row').style.display = 'none';
+    document.getElementById('seq-url-input').value = '';
+  }).catch(() => {});
+}
+
 function onImportFile(input) {
   const file = input.files[0];
   if (!file) return;
@@ -3628,19 +3699,7 @@ function onImportFile(input) {
   reader.onload = e => {
     try {
       const data = JSON.parse(e.target.result);
-      if (!Array.isArray(data.steps) || data.steps.length === 0) throw new Error('invalid');
-      seqSteps = data.steps.map(s => ({
-        beat:     parseFloat(s.beat)    || 10,
-        carrier:  parseFloat(s.carrier) || 432,
-        holdSecs: parseInt(s.holdSecs)  || 300,
-        rampSecs: parseInt(s.rampSecs)  || 0,
-        toneCues: Array.isArray(s.toneCues) ? s.toneCues.map(c => ({ hz: c.hz, atSecs: c.atSecs || 0 })) : [],
-      }));
-      seqName = data.name || '';
-      document.getElementById('seq-name').value = seqName;
-      applyMixerState(data.mixer);
-      renderSeqSteps();
-      updateSeqTotal();
+      loadProgram(data);
     } catch(e) {
       alert('Invalid program file.');
     }
@@ -4001,10 +4060,88 @@ document.getElementById('power-btn').addEventListener('click', () => {
 // Resume AudioContext on any interaction (iOS Safari re-suspends between gestures)
 document.addEventListener('click', () => {
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  // Retry silent audio if it stalled before a user gesture was available
+  if (_silentAudio && _silentAudio.paused && isPlaying) _silentAudio.play().catch(() => {});
+});
+
+// ── Background audio (iOS) ──────────────────────────────
+// iOS suspends the AudioContext when the page is backgrounded unless a real
+// <audio> element is also playing. We generate a tiny silent WAV as a Blob
+// URL and loop it; this keeps the audio session alive. We also register with
+// the MediaSession API so the OS treats us as a media player (background
+// privilege + lock-screen controls).
+
+let _silentAudio = null;
+let _bgAudioSetup = false;
+
+function _makeSilentWavUrl() {
+  const sr = 22050, dur = 1, n = sr * dur;
+  const buf = new ArrayBuffer(44 + n * 2);
+  const v = new DataView(buf);
+  const s = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+  s(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true);
+  s(8, 'WAVE'); s(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true);
+  v.setUint16(32, 2, true);  v.setUint16(34, 16, true);
+  s(36, 'data'); v.setUint32(40, n * 2, true);
+  // samples remain 0 (silence)
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+
+function setupBackgroundAudio() {
+  if (_bgAudioSetup) return;
+  _bgAudioSetup = true;
+
+  // Silent looping audio element — keeps iOS audio session active
+  _silentAudio = new Audio();
+  _silentAudio.src = _makeSilentWavUrl();
+  _silentAudio.loop = true;
+  _silentAudio.volume = 0.001; // not exactly 0; some iOS versions skip truly-silent elements
+  _silentAudio.play().catch(() => {}); // may fail if no user gesture yet; retried on next click
+
+  // MediaSession — registers as a media player for background privilege + lock screen controls
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: 'Liminal',
+      artist: 'Brainwave Entrainment',
+    });
+    navigator.mediaSession.setActionHandler('play',  () => { if (!isPlaying) togglePlay(); });
+    navigator.mediaSession.setActionHandler('pause', () => { if (isPlaying)  togglePlay(); });
+    navigator.mediaSession.setActionHandler('stop',  () => { if (isPlaying)  togglePlay(); });
+  }
+}
+
+function updateMediaSession(playing) {
+  if (!_bgAudioSetup) return;
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+  }
+  if (_silentAudio) {
+    if (playing) _silentAudio.play().catch(() => {});
+    // Keep looping even when paused — stopping it would end the audio session
+  }
+}
+
+// Resume AudioContext when returning from background (screen unlock / app switch)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
 });
 
 // Load persisted user programs
 initUserPrograms();
+
+// Auto-load sequence from ?seq=<url> query parameter
+(function checkSeqParam() {
+  const seqUrl = new URLSearchParams(window.location.search).get('seq');
+  if (!seqUrl) return;
+  fetchSeqFromUrl(seqUrl, { silent: false }).then(() => {
+    // Expand the sequencer so the loaded program is visible
+    if (!seqEnabled) toggleSeq();
+  }).catch(() => {});
+})();
 
 </script>
 </body>
