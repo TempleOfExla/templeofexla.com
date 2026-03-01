@@ -2208,6 +2208,7 @@ function startSessionTimer() {
       document.getElementById('power-btn').classList.remove('active');
       if (seqEnabled) stopSequence();
       stopAudio(true);  // immediate (fade already done)
+      _releaseWakeLock();
       updateInfoBar();
     }
   }, 1000);
@@ -2476,11 +2477,11 @@ function startOcean() {
 //  lfo.frequency.value = 0.07;
   lfo.frequency.value = 0.0033; // 30 s cycle for a more relaxed swell
 
-  // Level swell: base 0.6, ±0.32
+  // Level swell: base 1.0, ±0.20 — channel vol slider is a direct pass-through
   const waveGain      = audioCtx.createGain();
-  waveGain.gain.value = 0.6;
+  waveGain.gain.value = 1.0;
   const lfoLevelGain  = audioCtx.createGain();
-  lfoLevelGain.gain.value = 0.32;
+  lfoLevelGain.gain.value = 0.20;
   lfo.connect(lfoLevelGain);
   lfoLevelGain.connect(waveGain.gain);
 
@@ -2622,7 +2623,9 @@ function scheduleToneAutoNext(hz) {
   if (!cfg || !cfg.enabled) return;
   const delay = (cfg.min + Math.random() * (cfg.max - cfg.min)) * 1000;
   cfg.timerId = setTimeout(() => {
-    if (isPlaying && CH.tones.enabled) fireTone(hz === 'custom' ? customToneHz : hz);
+    // Suppress auto-play while a sequence is running — sequence cues are deterministic;
+    // random auto-play on top causes unexpected re-triggering.
+    if (isPlaying && CH.tones.enabled && !seqEnabled) fireTone(hz === 'custom' ? customToneHz : hz);
     scheduleToneAutoNext(hz);
   }, delay);
 }
@@ -4101,6 +4104,10 @@ async function _requestWakeLock() {
   if (!('wakeLock' in navigator)) return;
   try {
     _wakeLock = await navigator.wakeLock.request('screen');
+    // Re-request if the browser releases the lock while we're still playing
+    _wakeLock.addEventListener('release', () => {
+      if (isPlaying && !document.hidden) _requestWakeLock();
+    });
   } catch (e) {
     // Denied (low battery, unsupported context) — fail silently
   }
