@@ -716,9 +716,9 @@ kbd {
       <label class="ctrl-label" for="delayCutoff">Shimmer Cutoff</label>
       <div class="slider-wrap">
         <div class="slider-track-fill" id="fill-delay-cut"></div>
-        <input type="range" id="delayCutoff" min="200" max="8000" value="2500" step="100">
+        <input type="range" id="delayCutoff" min="200" max="8000" value="1200" step="100">
       </div>
-      <span class="ctrl-val" id="val-delay-cut">2500 Hz</span>
+      <span class="ctrl-val" id="val-delay-cut">1200 Hz</span>
     </div>
   </div>
 
@@ -734,7 +734,7 @@ kbd {
     <h2 class="info-title">CA Bells</h2>
 
     <h3 class="info-section">What is this?</h3>
-    <p class="info-body">A generative soundscape built from <strong>Conway's Game of Life</strong> and the ancient 432 Hz tuning system. Cells live and die on the grid; when new cells are born they ring like temple bells — their pitch determined by column position across a just-intonation scale, their sustain lengthened by cluster size.</p>
+    <p class="info-body">A generative soundscape built from <strong>Conway's Game of Life</strong> and the ancient 432 Hz tuning system. Cells live and die on the grid; when new cells are born they ring like temple bells — three layered partials with a soft attack and a long, evolving ring, each bell placed in a reverberant space.</p>
 
     <h3 class="info-section">The grid</h3>
     <p class="info-body"><strong>Click or touch</strong> any cell to toggle it and hear its tone immediately. Use <kbd>STIR</kbd> to seed a random pattern, <kbd>GUST</kbd> to add a sparse burst of new life (also happens automatically every ~22 seconds while running), or <kbd>VOID</kbd> to clear everything. Press <kbd>BEGIN</kbd> to start the automaton stepping; press again to <kbd>PAUSE</kbd>.</p>
@@ -743,10 +743,10 @@ kbd {
     <p class="info-body">Each column maps to a frequency derived from the selected <strong>Scale</strong> and <strong>Root Note</strong>, using just-intonation ratios centred on 432 Hz. The columns cycle through scale intervals across octaves from left (low) to right (high). <em>Pitch Fine</em> detunes all chimes by ±2 semitones for extra texture without affecting the drones.</p>
 
     <h3 class="info-section">Drones &amp; movement</h3>
-    <p class="info-body">Three sustained sine-wave drones underpin the soundscape, each individually tunable to any scale degree. Enable <strong>Movement</strong> for a slow volume swell (~6 s cycle) and a low-pass filter sweep (~12 s cycle) that breathes warmth through the texture. Enable <strong>Wind</strong> for filtered pink noise.</p>
+    <p class="info-body">Three sustained sine-wave drones underpin the soundscape, each individually tunable to any scale degree. Enable <strong>Movement</strong> for a slow volume swell (~6 s cycle) and a low-pass filter sweep (~12 s cycle) that breathes warmth through the texture. Enable <strong>Wind</strong> for a layer of filtered pink noise.</p>
 
-    <h3 class="info-section">Delay &amp; shimmer</h3>
-    <p class="info-body">Only chimes above the <em>Shimmer Cutoff</em> frequency are routed through the feedback delay loop, so high partials trail and shimmer while bass tones remain clean. Raise <em>Feedback</em> for longer echo tails; lower the <em>Cutoff</em> threshold to draw more of the spectrum into the effect.</p>
+    <h3 class="info-section">Space &amp; shimmer</h3>
+    <p class="info-body">All bells pass through a convolution reverb — an algorithmic room that gives each tone space to decay naturally. In addition, bells above the <em>Shimmer Cutoff</em> frequency are also routed through a feedback delay loop, so high partials accumulate into a trailing shimmer. Raise <em>Feedback</em> for longer tails; lower the <em>Cutoff</em> to draw more of the register into the shimmer effect.</p>
   </div>
 </div>
 
@@ -779,14 +779,15 @@ let currentGrid, nextGrid;
 let columnFreqs = [];
 let audioCtx = null;
 let masterGain, delayNode, delayGain, filterNode;
+let reverbSend = null;
 let movementFilter, swellGain;
 let volLFO = null, filterLFO = null;
 let windObj = null;
 let drones = [];
 let isRunning = false;
 let updateInterval = 280;
-let lastUpdate = 0;
-let rafId = null;
+let caInterval  = null;   // setInterval handle for CA steps
+let needsDraw   = true;   // flag for rAF renderer
 let audioInitialized = false;
 
 let currentScale  = "Tribal";
@@ -796,7 +797,7 @@ let droneNotes    = [0, 7, 12];
 let droneMasterVol = 0.5;
 let delayTimeVal   = 0.4;
 let delayFeedbackVal = 0.35;
-let delayCutoffVal = 2500;
+let delayCutoffVal = 1200;
 
 // ── Utility ───────────────────────────────────────────────────
 
@@ -895,50 +896,105 @@ function updateCA() {
 
 // ── Audio ─────────────────────────────────────────────────────
 
+// Algorithmic impulse response: exponentially decaying stereo noise
+function createImpulseResponse(duration, decay) {
+    const length = Math.floor(audioCtx.sampleRate * duration);
+    const buffer = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
+    // 15 ms pre-delay gap before reverb onset
+    const preDelay = Math.floor(audioCtx.sampleRate * 0.015);
+    for (let c = 0; c < 2; c++) {
+        const ch = buffer.getChannelData(c);
+        for (let i = 0; i < preDelay; i++) ch[i] = 0;
+        for (let i = preDelay; i < length; i++) {
+            const t = (i - preDelay) / (length - preDelay);
+            ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, decay);
+        }
+    }
+    return buffer;
+}
+
 function playChime(col, intensity, birthCount) {
     if (!audioCtx || !masterGain) return;
 
+    // Tight jitter (±0.3%) — clean tuning with just a whisper of life
     const freq = columnFreqs[col]
         * Math.pow(2, globalPitchShift / 12)
-        * (0.98 + Math.random() * 0.04);
+        * (0.997 + Math.random() * 0.006);
 
-    const now       = audioCtx.currentTime;
-    const baseDecay = 2.2 + Math.random() * 1.4;
-    const decay     = baseDecay + Math.min(3, (birthCount - 1) * 0.4);
+    const now           = audioCtx.currentTime;
+    const attackTime    = 0.015;    // 15 ms linear attack — removes onset click
+    const transientTime = 0.18;    // 180 ms bright metallic phase
+    const ringTime      = 3.5 + Math.random() * 2.0 + Math.min(4, (birthCount - 1) * 0.6);
+    const totalTime     = attackTime + transientTime + ringTime;
+    const startVol      = 0.14 * intensity;
 
-    const osc  = audioCtx.createOscillator();
-    osc.type   = 'triangle';
-    osc.frequency.value = freq;
+    // ── Fundamental (triangle, longest decay) ────────────────
+    const osc = audioCtx.createOscillator();
+    osc.type  = 'triangle';
+    // Tiny pitch drop on strike — metal settling after impact
+    osc.frequency.setValueAtTime(freq * 1.003, now);
+    osc.frequency.exponentialRampToValueAtTime(freq, now + 0.06);
 
-    const harm = audioCtx.createOscillator();
-    harm.type  = 'sine';
-    harm.frequency.value = freq * 2.8;
+    const fundGain = audioCtx.createGain();
+    osc.connect(fundGain);
 
-    const gain     = audioCtx.createGain();
-    const harmGain = audioCtx.createGain();
-    harmGain.gain.value = 0.28;
+    fundGain.gain.setValueAtTime(0, now);
+    fundGain.gain.linearRampToValueAtTime(startVol, now + attackTime);
+    fundGain.gain.exponentialRampToValueAtTime(startVol * 0.65, now + attackTime + transientTime);
+    fundGain.gain.exponentialRampToValueAtTime(0.0001, now + totalTime);
 
-    osc.connect(gain);
-    harm.connect(harmGain);
-    harmGain.connect(gain);
+    // ── 1st partial — bell ratio 2.756×, decays ~2.5× faster ─
+    const harm1 = audioCtx.createOscillator();
+    harm1.type  = 'sine';
+    harm1.frequency.value = freq * 2.756;
 
+    const harm1Gain = audioCtx.createGain();
+    harm1.connect(harm1Gain);
+
+    const h1Peak  = startVol * 0.20;
+    const h1End   = attackTime + transientTime + ringTime * 0.38;
+    harm1Gain.gain.setValueAtTime(0, now);
+    harm1Gain.gain.linearRampToValueAtTime(h1Peak, now + attackTime);
+    harm1Gain.gain.exponentialRampToValueAtTime(h1Peak * 0.45, now + attackTime + transientTime);
+    harm1Gain.gain.exponentialRampToValueAtTime(0.0001, now + h1End);
+
+    // ── 2nd partial — bell ratio 5.4×, just the initial ping ─
+    const harm2 = audioCtx.createOscillator();
+    harm2.type  = 'sine';
+    harm2.frequency.value = freq * 5.4;
+
+    const harm2Gain = audioCtx.createGain();
+    harm2.connect(harm2Gain);
+
+    const h2Peak = startVol * 0.07;
+    harm2Gain.gain.setValueAtTime(0, now);
+    harm2Gain.gain.linearRampToValueAtTime(h2Peak, now + attackTime);
+    harm2Gain.gain.exponentialRampToValueAtTime(0.0001, now + attackTime + 0.35);
+
+    // ── Routing ───────────────────────────────────────────────
+    fundGain.connect(masterGain);
+    harm1Gain.connect(masterGain);
+    harm2Gain.connect(masterGain);
+
+    // Reverb send (fundamental + 1st partial only — 2nd is too short)
+    if (reverbSend) {
+        fundGain.connect(reverbSend);
+        harm1Gain.connect(reverbSend);
+    }
+
+    // Shimmer delay for notes above the cutoff
     if (freq > delayCutoffVal) {
         const delaySend = audioCtx.createGain();
-        delaySend.gain.value = 0.4;
-        gain.connect(delaySend);
+        delaySend.gain.value = 0.35;
+        fundGain.connect(delaySend);
+        harm1Gain.connect(delaySend);
         delaySend.connect(delayNode);
     }
 
-    gain.connect(masterGain);
-
-    const startVol = 0.14 * intensity;
-    gain.gain.setValueAtTime(startVol, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + decay);
-
-    osc.start(now);
-    harm.start(now);
-
-    setTimeout(() => { osc.stop(); harm.stop(); }, (decay + 0.2) * 1000);
+    // ── Schedule stop ─────────────────────────────────────────
+    osc.start(now);    osc.stop(now + totalTime + 0.1);
+    harm1.start(now);  harm1.stop(now + h1End + 0.1);
+    harm2.start(now);  harm2.stop(now + attackTime + 0.5);
 }
 
 function initAudio() {
@@ -964,6 +1020,20 @@ function initAudio() {
     filterNode.frequency.value = delayCutoffVal;
     delayNode.connect(filterNode);
     filterNode.connect(masterGain);
+
+    // Convolution reverb (chime sends only — drones stay dry)
+    reverbSend = audioCtx.createGain();
+    reverbSend.gain.value = 0.38;
+
+    const convolver = audioCtx.createConvolver();
+    convolver.buffer = createImpulseResponse(2.8, 2.0);
+
+    const reverbWet = audioCtx.createGain();
+    reverbWet.gain.value = 0.80;
+
+    reverbSend.connect(convolver);
+    convolver.connect(reverbWet);
+    reverbWet.connect(masterGain);
 
     // Movement chain (drones pass through this)
     movementFilter = audioCtx.createBiquadFilter();
@@ -1179,16 +1249,26 @@ function draw() {
     }
 }
 
-// ── Game loop ─────────────────────────────────────────────────
+// ── CA loop (setInterval — survives tab switching) ────────────
 
-function gameLoop(timestamp) {
-    if (!lastUpdate) lastUpdate = timestamp;
-    if (isRunning && (timestamp - lastUpdate) >= updateInterval) {
+function startCALoop() {
+    stopCALoop();
+    caInterval = setInterval(() => {
+        if (!isRunning) return;
         updateCA();
-        draw();
-        lastUpdate = timestamp;
-    }
-    rafId = requestAnimationFrame(gameLoop);
+        needsDraw = true;
+    }, updateInterval);
+}
+
+function stopCALoop() {
+    if (caInterval !== null) { clearInterval(caInterval); caInterval = null; }
+}
+
+// ── Render loop (rAF — pauses in background, that's fine) ─────
+
+function gameLoop() {
+    if (needsDraw) { draw(); needsDraw = false; }
+    requestAnimationFrame(gameLoop);
 }
 
 // ── Input handling ────────────────────────────────────────────
@@ -1202,7 +1282,7 @@ function handlePointer(clientX, clientY) {
     if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
     currentGrid[row][col] = 1 - currentGrid[row][col];
     if (currentGrid[row][col] === 1 && audioCtx && audioInitialized) playChime(col, 0.7, 1);
-    draw();
+    needsDraw = true;
 }
 
 // ── UI setup ──────────────────────────────────────────────────
@@ -1232,20 +1312,20 @@ function setupUI() {
                 isRunning = !isRunning;
                 playBtn.textContent = isRunning ? 'PAUSE' : 'BEGIN';
                 playBtn.classList.toggle('active', isRunning);
-                if (isRunning) lastUpdate = performance.now();
+                if (isRunning) startCALoop(); else stopCALoop();
                 updateDroneVolumes();
             });
         } else {
             isRunning = !isRunning;
             playBtn.textContent = isRunning ? 'PAUSE' : 'BEGIN';
             playBtn.classList.toggle('active', isRunning);
-            if (isRunning) lastUpdate = performance.now();
+            if (isRunning) startCALoop(); else stopCALoop();
         }
     });
 
-    document.getElementById('randomBtn').addEventListener('click', () => { randomize(); draw(); });
-    document.getElementById('gustBtn').addEventListener('click',   () => { gustWind(); draw(); });
-    document.getElementById('clearBtn').addEventListener('click',  () => { clearGrid(); draw(); });
+    document.getElementById('randomBtn').addEventListener('click', () => { randomize(); needsDraw = true; });
+    document.getElementById('gustBtn').addEventListener('click',   () => { gustWind();  needsDraw = true; });
+    document.getElementById('clearBtn').addEventListener('click',  () => { clearGrid(); needsDraw = true; });
 
     // ── Playback controls ─────────────────────────────────────
 
@@ -1253,6 +1333,7 @@ function setupUI() {
         updateInterval = +e.target.value;
         document.getElementById('val-speed').textContent = updateInterval + ' ms';
         updateSliderFill('speedSlider', 'fill-speed', 80, 600);
+        if (isRunning) startCALoop(); // restart interval at new tempo
     });
 
     document.getElementById('windToggle').addEventListener('change', e => {
@@ -1347,12 +1428,12 @@ window.onload = () => {
     initGrids();
     randomize(0.16);
     setupUI();
-    draw();
+    needsDraw = true;
     requestAnimationFrame(gameLoop);
 
     // Auto-gust every ~22 s while running, to prevent die-out
     setInterval(() => {
-        if (isRunning && Math.random() < 0.35) { gustWind(); draw(); }
+        if (isRunning && Math.random() < 0.35) { gustWind(); needsDraw = true; }
     }, 22000);
 };
 

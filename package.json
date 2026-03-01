@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "npx @11ty/eleventy --serve",
-    "build": "npx @11ty/eleventy"
+    "build": "npx @11ty/eleventy",
+    "cpapps": "cp ../liminal/dist/liminal.html src/liminal.html && cp ../texla-bells/dist/bells.html src/bells.html"
   },
   "devDependencies": {
     "@11ty/eleventy": "^3.1.0"
