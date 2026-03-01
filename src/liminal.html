@@ -377,7 +377,7 @@ canvas#viz {
 input[type=range] {
   -webkit-appearance: none;
   width: 100%; height: 2px;
-  background: var(--border2);
+  background: linear-gradient(to right, var(--cyan-dim) var(--fill, 0%), var(--border2) var(--fill, 0%));
   border-radius: 1px;
   outline: none;
   cursor: pointer;
@@ -404,13 +404,7 @@ input[type=range]::-moz-range-thumb {
   cursor: pointer;
 }
 
-.slider-track-fill {
-  position: absolute; top: 50%; left: 0;
-  height: 2px; background: var(--cyan-dim);
-  border-radius: 1px; pointer-events: none;
-  transform: translateY(-50%);
-  transition: width .05s;
-}
+/* .slider-track-fill removed — fill is now a CSS gradient on the input itself */
 
 .control-value {
   font-size: 13px; color: var(--cyan);
@@ -1394,7 +1388,6 @@ input[type=range]::-moz-range-thumb {
     <div class="control-row">
       <label class="ctrl-label" for="sl-beat">Beat Frequency</label>
       <div class="slider-wrap">
-        <div class="slider-track-fill" id="fill-beat"></div>
         <input type="range" id="sl-beat" min="0.1" max="100" step="0.1" value="10"
           oninput="updateBeat(this.value)">
       </div>
@@ -1405,7 +1398,6 @@ input[type=range]::-moz-range-thumb {
     <div class="control-row">
       <label class="ctrl-label" for="sl-carrier">Carrier Frequency</label>
       <div class="slider-wrap">
-        <div class="slider-track-fill" id="fill-carrier"></div>
         <input type="range" id="sl-carrier" min="80" max="500" step="1" value="200"
           oninput="updateCarrier(this.value)">
       </div>
@@ -1416,16 +1408,14 @@ input[type=range]::-moz-range-thumb {
     <div class="control-row">
       <label class="ctrl-label" for="sl-vol">Volume</label>
       <div class="slider-wrap">
-        <div class="slider-track-fill" id="fill-vol"></div>
-        <input type="range" id="sl-vol" min="0" max="1" step="0.01" value="0.4"
+        <input type="range" id="sl-vol" min="0" max="1" step="0.01" value="0.5"
           oninput="updateVolume(this.value)">
       </div>
-      <span class="ctrl-val" id="val-vol">40%</span>
+      <span class="ctrl-val" id="val-vol">50%</span>
     </div>
     <div class="control-row" id="iso-duty-row" style="display:none">
       <label class="ctrl-label" for="sl-duty">Pulse Duty</label>
       <div class="slider-wrap">
-        <div class="slider-track-fill" id="fill-duty"></div>
         <input type="range" id="sl-duty" min="0.05" max="0.95" step="0.01" value="0.5"
           oninput="updateDuty(this.value)">
       </div>
@@ -1543,11 +1533,10 @@ input[type=range]::-moz-range-thumb {
         <div class="layer-slider-group">
           <span class="layer-slider-label">vol</span>
           <div class="slider-wrap layer-slider-wrap">
-            <div class="slider-track-fill" id="fill-ch-binaural-vol"></div>
-            <input type="range" id="sl-ch-binaural-vol" min="0" max="1" step="0.01" value="0.8"
+            <input type="range" id="sl-ch-binaural-vol" min="0" max="1" step="0.01" value="0.35"
               oninput="updateChannelVol('binaural',this.value)">
           </div>
-          <span class="layer-val" id="val-ch-binaural-vol">80%</span>
+          <span class="layer-val" id="val-ch-binaural-vol">35%</span>
         </div>
       </div>
     </div>
@@ -1560,16 +1549,14 @@ input[type=range]::-moz-range-thumb {
         <div class="layer-slider-group">
           <span class="layer-slider-label">vol</span>
           <div class="slider-wrap layer-slider-wrap">
-            <div class="slider-track-fill" id="fill-ch-noise-vol"></div>
-            <input type="range" id="sl-ch-noise-vol" min="0" max="1" step="0.01" value="0.25"
+            <input type="range" id="sl-ch-noise-vol" min="0" max="1" step="0.01" value="0.2"
               oninput="updateChannelVol('noise',this.value)">
           </div>
-          <span class="layer-val" id="val-ch-noise-vol">25%</span>
+          <span class="layer-val" id="val-ch-noise-vol">20%</span>
         </div>
         <div class="layer-slider-group">
           <span class="layer-slider-label">pan</span>
           <div class="slider-wrap layer-slider-wrap">
-            <div class="slider-track-fill" id="fill-ch-noise-pan"></div>
             <input type="range" id="sl-ch-noise-pan" min="-1" max="1" step="0.05" value="0"
               oninput="updateChannelPan('noise',this.value)">
           </div>
@@ -1590,16 +1577,14 @@ input[type=range]::-moz-range-thumb {
         <div class="layer-slider-group">
           <span class="layer-slider-label">vol</span>
           <div class="slider-wrap layer-slider-wrap">
-            <div class="slider-track-fill" id="fill-ch-ocean-vol"></div>
-            <input type="range" id="sl-ch-ocean-vol" min="0" max="1" step="0.01" value="0.3"
+            <input type="range" id="sl-ch-ocean-vol" min="0" max="1" step="0.01" value="0.65"
               oninput="updateChannelVol('ocean',this.value)">
           </div>
-          <span class="layer-val" id="val-ch-ocean-vol">30%</span>
+          <span class="layer-val" id="val-ch-ocean-vol">65%</span>
         </div>
         <div class="layer-slider-group">
           <span class="layer-slider-label">pan</span>
           <div class="slider-wrap layer-slider-wrap">
-            <div class="slider-track-fill" id="fill-ch-ocean-pan"></div>
             <input type="range" id="sl-ch-ocean-pan" min="-1" max="1" step="0.05" value="0"
               oninput="updateChannelPan('ocean',this.value)">
           </div>
@@ -1620,16 +1605,14 @@ input[type=range]::-moz-range-thumb {
         <div class="layer-slider-group">
           <span class="layer-slider-label">vol</span>
           <div class="slider-wrap layer-slider-wrap">
-            <div class="slider-track-fill" id="fill-ch-iso-vol"></div>
-            <input type="range" id="sl-ch-iso-vol" min="0" max="1" step="0.01" value="0.5"
+            <input type="range" id="sl-ch-iso-vol" min="0" max="1" step="0.01" value="0.4"
               oninput="updateChannelVol('iso',this.value)">
           </div>
-          <span class="layer-val" id="val-ch-iso-vol">50%</span>
+          <span class="layer-val" id="val-ch-iso-vol">40%</span>
         </div>
         <div class="layer-slider-group">
           <span class="layer-slider-label">pan</span>
           <div class="slider-wrap layer-slider-wrap">
-            <div class="slider-track-fill" id="fill-ch-iso-pan"></div>
             <input type="range" id="sl-ch-iso-pan" min="-1" max="1" step="0.05" value="0"
               oninput="updateChannelPan('iso',this.value)">
           </div>
@@ -1661,16 +1644,14 @@ input[type=range]::-moz-range-thumb {
         <div class="layer-slider-group">
           <span class="layer-slider-label">vol</span>
           <div class="slider-wrap layer-slider-wrap">
-            <div class="slider-track-fill" id="fill-ch-tones-vol"></div>
-            <input type="range" id="sl-ch-tones-vol" min="0" max="1" step="0.01" value="0.6"
+            <input type="range" id="sl-ch-tones-vol" min="0" max="1" step="0.01" value="0.45"
               oninput="updateChannelVol('tones',this.value)">
           </div>
-          <span class="layer-val" id="val-ch-tones-vol">60%</span>
+          <span class="layer-val" id="val-ch-tones-vol">45%</span>
         </div>
         <div class="layer-slider-group">
           <span class="layer-slider-label">pan</span>
           <div class="slider-wrap layer-slider-wrap">
-            <div class="slider-track-fill" id="fill-ch-tones-pan"></div>
             <input type="range" id="sl-ch-tones-pan" min="-1" max="1" step="0.05" value="0"
               oninput="updateChannelPan('tones',this.value)">
           </div>
@@ -1767,16 +1748,16 @@ let waveType   = 'sine';
 
 let beatFreq    = 10;
 let carrierFreq = 200;
-let volume      = 0.4;
+let volume      = 0.25; // actual gain; slider position = sqrt(volume) via v² taper
 let isoDuty     = 0.5;
 
 // Per-channel mixer state
 const CH = {
-  binaural: { vol: 0.8,  enabled: true  },
-  noise:    { vol: 0.25, enabled: false, pan: 0, type: 'pink' },
-  ocean:    { vol: 0.3,  enabled: false, pan: 0 },
-  iso:      { vol: 0.5,  enabled: false, pan: 0, beat: 10, carrier: 174 },
-  tones:    { vol: 0.6,  enabled: true,  pan: 0 },
+  binaural: { vol: 0.35, enabled: true  },
+  noise:    { vol: 0.2,  enabled: false, pan: 0, type: 'pink' },
+  ocean:    { vol: 0.65, enabled: false, pan: 0 },
+  iso:      { vol: 0.4,  enabled: false, pan: 0, beat: 10, carrier: 174 },
+  tones:    { vol: 0.45, enabled: true,  pan: 0 },
 };
 
 // Audio nodes — master
@@ -1938,12 +1919,12 @@ const BUILT_IN_PROGRAMS = [
   { name: 'Solfeggio Journey',
     desc: 'Alpha–theta descent with Solfeggio tone cues at each stage.',
     mixer: {
-      masterVol: 0.4, waveType: 'sine', isoDuty: 0.5,
-      binaural: { enabled: true,  vol: 0.8 },
-      noise:    { enabled: true,  vol: 0.25, pan: 0,   type: 'pink' },
-      ocean:    { enabled: false, vol: 0.3,  pan: 0 },
-      iso:      { enabled: false, vol: 0.5,  pan: 0,   beat: 10,  carrier: 174 },
-      tones:    { enabled: true,  vol: 0.65, pan: 0 },
+      masterVol: 0.25, waveType: 'sine', isoDuty: 0.5,
+      binaural: { enabled: true,  vol: 0.35 },
+      noise:    { enabled: true,  vol: 0.2,  pan: 0,   type: 'pink' },
+      ocean:    { enabled: false, vol: 0.65, pan: 0 },
+      iso:      { enabled: false, vol: 0.4,  pan: 0,   beat: 10,  carrier: 174 },
+      tones:    { enabled: true,  vol: 0.45, pan: 0 },
     },
     steps: [
       { beat:10, carrier:432, holdSecs:300, rampSecs:0,
@@ -1957,12 +1938,12 @@ const BUILT_IN_PROGRAMS = [
   { name: 'Root to Crown',
     desc: 'Theta rising to alpha with a chakra tone progression.',
     mixer: {
-      masterVol: 0.4, waveType: 'sine', isoDuty: 0.5,
-      binaural: { enabled: true,  vol: 0.75 },
-      noise:    { enabled: false, vol: 0.25, pan: 0,   type: 'pink' },
-      ocean:    { enabled: true,  vol: 0.35, pan: 0 },
-      iso:      { enabled: false, vol: 0.5,  pan: 0,   beat: 10,  carrier: 174 },
-      tones:    { enabled: true,  vol: 0.65, pan: 0 },
+      masterVol: 0.25, waveType: 'sine', isoDuty: 0.5,
+      binaural: { enabled: true,  vol: 0.3 },
+      noise:    { enabled: false, vol: 0.2,  pan: 0,   type: 'pink' },
+      ocean:    { enabled: true,  vol: 0.65, pan: 0 },
+      iso:      { enabled: false, vol: 0.4,  pan: 0,   beat: 10,  carrier: 174 },
+      tones:    { enabled: true,  vol: 0.45, pan: 0 },
     },
     steps: [
       { beat:6,  carrier:200, holdSecs:180, rampSecs:0,
@@ -1976,12 +1957,12 @@ const BUILT_IN_PROGRAMS = [
   { name: 'Gamma + Om',
     desc: 'Alpha warm-up into gamma clarity. Binaural and Iso Pulse run simultaneously on independent frequencies.',
     mixer: {
-      masterVol: 0.4, waveType: 'sine', isoDuty: 0.5,
-      binaural: { enabled: true,  vol: 0.7 },
-      noise:    { enabled: false, vol: 0.25, pan: 0,    type: 'pink' },
-      ocean:    { enabled: false, vol: 0.3,  pan: 0 },
-      iso:      { enabled: true,  vol: 0.4,  pan: 0.15, beat: 40,  carrier: 320 },
-      tones:    { enabled: true,  vol: 0.6,  pan: 0 },
+      masterVol: 0.25, waveType: 'sine', isoDuty: 0.5,
+      binaural: { enabled: true,  vol: 0.35 },
+      noise:    { enabled: false, vol: 0.2,  pan: 0,    type: 'pink' },
+      ocean:    { enabled: false, vol: 0.65, pan: 0 },
+      iso:      { enabled: true,  vol: 0.35, pan: 0.15, beat: 40,  carrier: 320 },
+      tones:    { enabled: true,  vol: 0.45, pan: 0 },
     },
     steps: [
       { beat:10, carrier:432, holdSecs:180, rampSecs:0,
@@ -1995,13 +1976,13 @@ const BUILT_IN_PROGRAMS = [
   { name: 'Chakra Reset',
     desc: '21 min · Seven chakras · alpha→theta→alpha arc · Ocean · Solfeggio tone cues',
     mixer: {
-      masterVol: 0.4, waveType: 'sine', isoDuty: 0.5,
+      masterVol: 0.25, waveType: 'sine', isoDuty: 0.5,
       driftEnabled: true, reverbEnabled: true,
-      binaural: { enabled: true,  vol: 0.8 },
-      noise:    { enabled: false, vol: 0.25, pan: 0, type: 'pink' },
-      ocean:    { enabled: true,  vol: 0.4,  pan: 0 },
-      iso:      { enabled: false, vol: 0.5,  pan: 0, beat: 10, carrier: 174 },
-      tones:    { enabled: true,  vol: 0.7,  pan: 0 },
+      binaural: { enabled: true,  vol: 0.3 },
+      noise:    { enabled: false, vol: 0.2,  pan: 0, type: 'pink' },
+      ocean:    { enabled: true,  vol: 0.7,  pan: 0 },
+      iso:      { enabled: false, vol: 0.4,  pan: 0, beat: 10, carrier: 174 },
+      tones:    { enabled: true,  vol: 0.45, pan: 0 },
     },
     steps: CHAKRA_RESET_PROGRAM,
   },
@@ -2816,9 +2797,10 @@ function setCarrierDirect(v) {
 }
 
 function updateVolume(v) {
-  volume = parseFloat(v);
-  document.getElementById('val-vol').textContent = Math.round(volume * 100) + '%';
-  updateSliderFill('sl-vol', volume, 0, 1);
+  const pos = parseFloat(v);          // slider position 0–1
+  volume = pos * pos;                 // v² taper → actual gain
+  document.getElementById('val-vol').textContent = Math.round(pos * 100) + '%';
+  updateSliderFill('sl-vol', pos, 0, 1);
   if (masterGain) {
     masterGain.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + 0.05);
   }
@@ -2831,9 +2813,9 @@ function updateDuty(v) {
 }
 
 function updateSliderFill(id, val, min, max) {
-  const pct  = ((val - min) / (max - min)) * 100;
-  const fill = document.getElementById('fill-' + id.replace('sl-', ''));
-  if (fill) fill.style.width = pct + '%';
+  const pct = ((val - min) / (max - min)) * 100;
+  const sl  = document.getElementById(id);
+  if (sl) sl.style.setProperty('--fill', pct + '%');
 }
 
 function clearPresetActive() {
@@ -3517,11 +3499,12 @@ function applyMixerState(mixer) {
 
   // Master volume
   if (mixer.masterVol != null) {
-    volume = mixer.masterVol;
+    volume = mixer.masterVol;         // stored as actual gain
+    const pos = Math.sqrt(volume);    // slider position via v² taper
     const sl = document.getElementById('sl-vol');
-    if (sl) sl.value = volume;
-    document.getElementById('val-vol').textContent = Math.round(volume * 100) + '%';
-    updateSliderFill('sl-vol', volume, 0, 1);
+    if (sl) sl.value = pos;
+    document.getElementById('val-vol').textContent = Math.round(pos * 100) + '%';
+    updateSliderFill('sl-vol', pos, 0, 1);
     if (masterGain && audioCtx) masterGain.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + 0.05);
   }
 
@@ -4036,7 +4019,7 @@ function drawLissajous() {
 // Slider fills — existing controls
 updateSliderFill('sl-beat',    beatFreq,    0.1, 100);
 updateSliderFill('sl-carrier', carrierFreq, 80,  500);
-updateSliderFill('sl-vol',     volume,      0,   1);
+updateSliderFill('sl-vol',     Math.sqrt(volume), 0, 1);
 updateSliderFill('sl-duty',    isoDuty,     0.1, 0.9);
 
 // Slider fills — channel volume sliders
