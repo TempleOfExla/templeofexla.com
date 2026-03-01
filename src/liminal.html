@@ -2681,6 +2681,7 @@ function togglePlay() {
   }
 
   updateMediaSession(isPlaying);
+  if (isPlaying) _requestWakeLock(); else _releaseWakeLock();
   updateTimerDisplay();
   updateInfoBar();
 }
@@ -4106,7 +4107,26 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && audioCtx && audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
+  // Re-acquire wake lock when page becomes visible again (lock is auto-released on hide)
+  if (!document.hidden && isPlaying) _requestWakeLock();
 });
+
+// ── Screen Wake Lock ────────────────────────────────────
+let _wakeLock = null;
+
+async function _requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    _wakeLock = await navigator.wakeLock.request('screen');
+  } catch (e) {
+    // Denied (low battery, unsupported context) — fail silently
+  }
+}
+
+function _releaseWakeLock() {
+  _wakeLock?.release();
+  _wakeLock = null;
+}
 
 // Load persisted user programs
 initUserPrograms();
