@@ -4065,17 +4065,16 @@ document.addEventListener('click', () => {
 });
 
 // ── Background audio (iOS) ──────────────────────────────
-// iOS suspends the AudioContext when the page is backgrounded unless a real
-// <audio> element is also playing. We generate a tiny silent WAV as a Blob
-// URL and loop it; this keeps the audio session alive. We also register with
-// the MediaSession API so the OS treats us as a media player (background
-// privilege + lock-screen controls).
+// iOS suspends the AudioContext when switching apps unless a real <audio>
+// element is also playing. We generate a tiny silent WAV as a Blob URL and
+// loop it to keep the audio session alive across app switches.
+// Note: screen lock still suspends WebAudio — that is an iOS hard limit.
 
 let _silentAudio = null;
 let _bgAudioSetup = false;
 
 function _makeSilentWavUrl() {
-  const sr = 22050, dur = 1, n = sr * dur;
+  const sr = 22050, n = sr; // 1 second
   const buf = new ArrayBuffer(44 + n * 2);
   const v = new DataView(buf);
   const s = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
@@ -4085,42 +4084,21 @@ function _makeSilentWavUrl() {
   v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true);
   v.setUint16(32, 2, true);  v.setUint16(34, 16, true);
   s(36, 'data'); v.setUint32(40, n * 2, true);
-  // samples remain 0 (silence)
   return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
 }
 
 function setupBackgroundAudio() {
   if (_bgAudioSetup) return;
   _bgAudioSetup = true;
-
-  // Silent looping audio element — keeps iOS audio session active
   _silentAudio = new Audio();
   _silentAudio.src = _makeSilentWavUrl();
   _silentAudio.loop = true;
   _silentAudio.volume = 0.001; // not exactly 0; some iOS versions skip truly-silent elements
-  _silentAudio.play().catch(() => {}); // may fail if no user gesture yet; retried on next click
-
-  // MediaSession — registers as a media player for background privilege + lock screen controls
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: 'Liminal',
-      artist: 'Brainwave Entrainment',
-    });
-    navigator.mediaSession.setActionHandler('play',  () => { if (!isPlaying) togglePlay(); });
-    navigator.mediaSession.setActionHandler('pause', () => { if (isPlaying)  togglePlay(); });
-    navigator.mediaSession.setActionHandler('stop',  () => { if (isPlaying)  togglePlay(); });
-  }
+  _silentAudio.play().catch(() => {}); // may fail before user gesture; retried on next click
 }
 
 function updateMediaSession(playing) {
-  if (!_bgAudioSetup) return;
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
-  }
-  if (_silentAudio) {
-    if (playing) _silentAudio.play().catch(() => {});
-    // Keep looping even when paused — stopping it would end the audio session
-  }
+  if (_silentAudio && playing) _silentAudio.play().catch(() => {});
 }
 
 // Resume AudioContext when returning from background (screen unlock / app switch)
