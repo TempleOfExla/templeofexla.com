@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liminal Chimes · 432 Hz</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<script>(function(){const t=localStorage.getItem('bells-theme')||'dark';document.documentElement.setAttribute('data-theme',t);}());</script>
+<style>
+/* ── Variables ──────────────────────────────────────────────── */
+:root {
+  --bg:        #080a0d;
+  --bg2:       #0d1117;
+  --surface:   #111620;
+  --border:    #1e2535;
+  --border2:   #2a3548;
+  --cyan:      #00e5cc;
+  --cyan-dim:  #00664d;
+  --cyan-glow: rgba(0, 229, 204, .18);
+  --text:      #c8d8e8;
+  --muted:     #4a5a70;
+  --dim:       #303c50;
+  --mono:      'Share Tech Mono', monospace;
+  --serif:     'Cormorant Garamond', serif;
+}
+
+[data-theme="light"] {
+  --bg:        #eef1f6;
+  --bg2:       #f5f7fa;
+  --surface:   #ffffff;
+  --border:    #d0d8e8;
+  --border2:   #b0bcd0;
+  --cyan:      #0077aa;
+  --cyan-dim:  #cce8f4;
+  --cyan-glow: rgba(0, 119, 170, .15);
+  --text:      #1a2535;
+  --muted:     #6a7a90;
+  --dim:       #9aaabb;
+}
+
+/* ── Reset & Base ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 4rem;
+  transition: background .3s, color .3s;
+}
+
+.app {
+  width: 100%;
+  max-width: 480px;
+  padding: 0 1.25rem;
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+header {
+  text-align: center;
+  padding: 2.5rem 0 1.5rem;
+  position: relative;
+}
+
+.app-name {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(26px, 7vw, 40px);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin-bottom: .3rem;
+}
+
+.app-sub {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.header-btns {
+  position: absolute;
+  top: 2.5rem;
+  right: 0;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.info-btn,
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 13px;
+  transition: border-color .2s, color .2s;
+  flex-shrink: 0;
+}
+
+.info-btn:hover,
+.theme-toggle:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+/* ── Canvas ─────────────────────────────────────────────────── */
+.canvas-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+canvas {
+  background: #000;
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  box-shadow: 0 0 40px var(--cyan-glow);
+  image-rendering: pixelated;
+  cursor: crosshair;
+  width: 100%;
+  max-width: 375px;
+  height: auto;
+  display: block;
+  transition: box-shadow .3s, border-color .3s;
+}
+
+canvas:hover {
+  border-color: var(--cyan);
+  box-shadow: 0 0 60px var(--cyan-glow);
+}
+
+/* ── Power Section ──────────────────────────────────────────── */
+.power-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 1.75rem;
+}
+
+.power-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid var(--border2);
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .2em;
+  cursor: pointer;
+  transition: all .3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.power-btn::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  transition: all .3s;
+}
+
+.power-btn.active {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  box-shadow:
+    0 0 22px var(--cyan-glow),
+    0 0 44px rgba(0, 229, 204, .07),
+    inset 0 0 18px rgba(0, 229, 204, .04);
+}
+
+[data-theme="light"] .power-btn.active {
+  box-shadow:
+    0 0 18px var(--cyan-glow),
+    inset 0 0 14px rgba(0, 119, 170, .04);
+}
+
+.power-btn.active::before {
+  border-color: rgba(0, 229, 204, .18);
+  animation: pulse-ring 2s ease-in-out infinite;
+}
+
+[data-theme="light"] .power-btn.active::before {
+  border-color: rgba(0, 119, 170, .18);
+}
+
+@keyframes pulse-ring {
+  0%, 100% { transform: scale(1);    opacity: .6; }
+  50%       { transform: scale(1.15); opacity: .2; }
+}
+
+/* ── Action Row ─────────────────────────────────────────────── */
+.action-row {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  padding: 8px 22px;
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .2em;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.action-btn:hover {
+  border-color: var(--border2);
+  color: var(--text);
+  background: rgba(255, 255, 255, .03);
+}
+
+[data-theme="light"] .action-btn:hover {
+  background: rgba(0, 0, 0, .03);
+}
+
+/* ── Section Label ──────────────────────────────────────────── */
+.section-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .35em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 1.5rem 0 .75rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Control Rows ───────────────────────────────────────────── */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  margin-bottom: .5rem;
+}
+
+.control-row {
+  display: grid;
+  grid-template-columns: 128px 1fr 64px;
+  align-items: center;
+  gap: 12px;
+}
+
+.ctrl-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .05em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ctrl-val {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--cyan);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ── Slider ─────────────────────────────────────────────────── */
+.slider-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 20px;
+}
+
+/* Full-width track background */
+.slider-wrap::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 2px;
+  background: var(--border2);
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Filled portion */
+.slider-track-fill {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 2px;
+  background: var(--cyan-dim);
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 1;
+  transition: width .04s;
+  width: 0%;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  background: transparent;
+  width: 100%;
+  cursor: pointer;
+  outline: none;
+  position: relative;
+  z-index: 2;
+  margin: 0;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 2px;
+  border-radius: 1px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan-glow);
+  cursor: pointer;
+  margin-top: -6px;
+  transition: transform .15s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.3);
+}
+
+input[type="range"]::-moz-range-track {
+  background: transparent;
+  height: 2px;
+  border-radius: 1px;
+}
+
+input[type="range"]::-moz-range-thumb {
+  border: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan-glow);
+  cursor: pointer;
+}
+
+input[type="range"]::-moz-range-progress {
+  background: var(--cyan-dim);
+  height: 2px;
+  border-radius: 1px;
+}
+
+/* ── Checkboxes (option-check) ──────────────────────────────── */
+.options-group {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  margin-bottom: .5rem;
+}
+
+.option-check {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .05em;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  transition: color .2s;
+}
+
+.option-check input[type="checkbox"] {
+  accent-color: var(--cyan);
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.option-check:has(input:checked) {
+  color: var(--text);
+}
+
+.option-hint {
+  color: var(--dim);
+  font-size: 9px;
+  letter-spacing: 0;
+}
+
+/* ── Selects ────────────────────────────────────────────────── */
+.selects {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  margin-bottom: .75rem;
+}
+
+.select-row {
+  display: grid;
+  grid-template-columns: 128px 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.ctrl-select {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .04em;
+  padding: 6px 8px;
+  cursor: pointer;
+  outline: none;
+  width: 100%;
+  transition: border-color .2s;
+}
+
+.ctrl-select:focus,
+.ctrl-select:hover {
+  border-color: var(--cyan);
+}
+
+/* ── Footer ─────────────────────────────────────────────────── */
+.footer {
+  text-align: center;
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--muted);
+  padding: 2.5rem 0 0;
+  letter-spacing: .05em;
+}
+
+/* ── Info Modal ─────────────────────────────────────────────── */
+.info-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, .82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.info-modal-inner {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  max-width: 540px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 36px 32px 32px;
+  position: relative;
+}
+
+.info-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color .2s;
+}
+
+.info-close:hover { color: var(--text); }
+
+.info-title {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: 26px;
+  color: var(--cyan);
+  letter-spacing: .1em;
+  margin: 0 0 20px;
+}
+
+.info-section {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin: 22px 0 8px;
+}
+
+.info-body {
+  font-family: var(--serif);
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.7;
+  font-weight: 300;
+  margin: 0;
+}
+
+.info-body strong {
+  font-weight: 400;
+}
+
+kbd {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: var(--cyan);
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 420px) {
+  .app { padding: 0 .85rem; }
+
+  .control-row {
+    grid-template-columns: 100px 1fr 56px;
+    gap: 8px;
+  }
+
+  .select-row {
+    grid-template-columns: 100px 1fr;
+    gap: 8px;
+  }
+
+  .info-modal-inner {
+    padding: 28px 20px 24px;
+  }
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1 class="app-name">CA Bells</h1>
+    <p class="app-sub">432 Hz · Cellular Resonance · Temple Soundscape</p>
+    <div class="header-btns">
+      <button class="info-btn" onclick="toggleInfo()" title="How to use">?</button>
+      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">
+        <svg id="theme-icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        <svg id="theme-icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Canvas -->
+  <div class="canvas-wrap">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <!-- Transport -->
+  <div class="power-section">
+    <button class="power-btn" id="playBtn">BEGIN</button>
+    <div class="action-row">
+      <button class="action-btn" id="randomBtn">STIR</button>
+      <button class="action-btn" id="gustBtn">GUST</button>
+      <button class="action-btn" id="clearBtn">VOID</button>
+    </div>
+  </div>
+
+  <!-- Playback -->
+  <p class="section-label">Playback</p>
+  <div class="controls">
+    <div class="control-row">
+      <label class="ctrl-label" for="speedSlider">Tempo</label>
+      <div class="slider-wrap">
+        <div class="slider-track-fill" id="fill-speed"></div>
+        <input type="range" id="speedSlider" min="80" max="600" value="280" step="20">
+      </div>
+      <span class="ctrl-val" id="val-speed">280 ms</span>
+    </div>
+  </div>
+  <div class="options-group">
+    <label class="option-check">
+      <input type="checkbox" id="windToggle">
+      Wind
+      <span class="option-hint">filtered pink noise</span>
+    </label>
+    <label class="option-check">
+      <input type="checkbox" id="droneToggle">
+      Drone
+      <span class="option-hint">sustained root tones</span>
+    </label>
+    <label class="option-check">
+      <input type="checkbox" id="movementToggle">
+      Movement
+      <span class="option-hint">slow LFO swell + filter sweep</span>
+    </label>
+  </div>
+
+  <!-- Tonality -->
+  <p class="section-label">Tonality</p>
+  <div class="selects">
+    <div class="select-row">
+      <label class="ctrl-label" for="scaleSelect">Scale</label>
+      <select class="ctrl-select" id="scaleSelect">
+        <option value="C Major">C Major (diatonic)</option>
+        <option value="G Pentatonic">G Major Pentatonic</option>
+        <option value="A Minor Pentatonic">A Minor Pentatonic</option>
+        <option value="Happy">Beat Root Happy</option>
+        <option value="Zen">Beat Root Zen</option>
+        <option value="Tribal" selected>Beat Root Tribal</option>
+      </select>
+    </div>
+    <div class="select-row">
+      <label class="ctrl-label" for="rootSelect">Root Note</label>
+      <select class="ctrl-select" id="rootSelect">
+        <option value="C">C</option>
+        <option value="D">D</option>
+        <option value="E">E</option>
+        <option value="F">F</option>
+        <option value="G" selected>G</option>
+        <option value="A">A</option>
+        <option value="B">B</option>
+      </select>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="control-row">
+      <label class="ctrl-label" for="pitchShift">Pitch Fine</label>
+      <div class="slider-wrap">
+        <div class="slider-track-fill" id="fill-pitch"></div>
+        <input type="range" id="pitchShift" min="-2" max="2" value="0" step="0.1">
+      </div>
+      <span class="ctrl-val" id="val-pitch">0.0</span>
+    </div>
+  </div>
+
+  <!-- Drones -->
+  <p class="section-label">Drones</p>
+  <div class="selects" id="drone-selects">
+    <div class="select-row">
+      <label class="ctrl-label" for="drone1Note">Drone 1 (low)</label>
+      <select class="ctrl-select" id="drone1Note"></select>
+    </div>
+    <div class="select-row">
+      <label class="ctrl-label" for="drone2Note">Drone 2 (mid)</label>
+      <select class="ctrl-select" id="drone2Note"></select>
+    </div>
+    <div class="select-row">
+      <label class="ctrl-label" for="drone3Note">Drone 3 (high)</label>
+      <select class="ctrl-select" id="drone3Note"></select>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="control-row">
+      <label class="ctrl-label" for="droneMasterVol">Volume</label>
+      <div class="slider-wrap">
+        <div class="slider-track-fill" id="fill-drone-vol"></div>
+        <input type="range" id="droneMasterVol" min="0" max="100" value="50" step="1">
+      </div>
+      <span class="ctrl-val" id="val-drone-vol">50%</span>
+    </div>
+  </div>
+
+  <!-- Delay -->
+  <p class="section-label">Delay</p>
+  <div class="controls">
+    <div class="control-row">
+      <label class="ctrl-label" for="delayTime">Time</label>
+      <div class="slider-wrap">
+        <div class="slider-track-fill" id="fill-delay-time"></div>
+        <input type="range" id="delayTime" min="0" max="1.2" value="0.4" step="0.05">
+      </div>
+      <span class="ctrl-val" id="val-delay-time">0.40s</span>
+    </div>
+    <div class="control-row">
+      <label class="ctrl-label" for="delayFeedback">Feedback</label>
+      <div class="slider-wrap">
+        <div class="slider-track-fill" id="fill-delay-fb"></div>
+        <input type="range" id="delayFeedback" min="0" max="0.7" value="0.35" step="0.05">
+      </div>
+      <span class="ctrl-val" id="val-delay-fb">50%</span>
+    </div>
+    <div class="control-row">
+      <label class="ctrl-label" for="delayCutoff">Shimmer Cutoff</label>
+      <div class="slider-wrap">
+        <div class="slider-track-fill" id="fill-delay-cut"></div>
+        <input type="range" id="delayCutoff" min="200" max="8000" value="2500" step="100">
+      </div>
+      <span class="ctrl-val" id="val-delay-cut">2500 Hz</span>
+    </div>
+  </div>
+
+  <div class="footer">Temple of the Exalted Lantern · 432 Hz resonant threshold</div>
+
+</div><!-- .app -->
+
+<!-- Info Modal -->
+<div class="info-modal" id="info-modal" style="display:none" onclick="if(event.target===this)toggleInfo()">
+  <div class="info-modal-inner">
+    <button class="info-close" onclick="toggleInfo()">×</button>
+
+    <h2 class="info-title">CA Bells</h2>
+
+    <h3 class="info-section">What is this?</h3>
+    <p class="info-body">A generative soundscape built from <strong>Conway's Game of Life</strong> and the ancient 432 Hz tuning system. Cells live and die on the grid; when new cells are born they ring like temple bells — their pitch determined by column position across a just-intonation scale, their sustain lengthened by cluster size.</p>
+
+    <h3 class="info-section">The grid</h3>
+    <p class="info-body"><strong>Click or touch</strong> any cell to toggle it and hear its tone immediately. Use <kbd>STIR</kbd> to seed a random pattern, <kbd>GUST</kbd> to add a sparse burst of new life (also happens automatically every ~22 seconds while running), or <kbd>VOID</kbd> to clear everything. Press <kbd>BEGIN</kbd> to start the automaton stepping; press again to <kbd>PAUSE</kbd>.</p>
+
+    <h3 class="info-section">Tonality</h3>
+    <p class="info-body">Each column maps to a frequency derived from the selected <strong>Scale</strong> and <strong>Root Note</strong>, using just-intonation ratios centred on 432 Hz. The columns cycle through scale intervals across octaves from left (low) to right (high). <em>Pitch Fine</em> detunes all chimes by ±2 semitones for extra texture without affecting the drones.</p>
+
+    <h3 class="info-section">Drones &amp; movement</h3>
+    <p class="info-body">Three sustained sine-wave drones underpin the soundscape, each individually tunable to any scale degree. Enable <strong>Movement</strong> for a slow volume swell (~6 s cycle) and a low-pass filter sweep (~12 s cycle) that breathes warmth through the texture. Enable <strong>Wind</strong> for filtered pink noise.</p>
+
+    <h3 class="info-section">Delay &amp; shimmer</h3>
+    <p class="info-body">Only chimes above the <em>Shimmer Cutoff</em> frequency are routed through the feedback delay loop, so high partials trail and shimmer while bass tones remain clean. Raise <em>Feedback</em> for longer echo tails; lower the <em>Cutoff</em> threshold to draw more of the spectrum into the effect.</p>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// Liminal Chimes — bells.js
+// ══════════════════════════════════════════════════════════════
+
+// === CONFIG ===
+const ROWS      = 40;
+const COLS      = 25;
+const CELL_SIZE = 15;
+
+const SCALES = {
+    "C Major":            [0, 2, 4, 5, 7, 9, 11, 12],
+    "G Pentatonic":       [0, 2, 4, 7, 9],
+    "A Minor Pentatonic": [0, 3, 5, 7, 10],
+    "Happy":              [0, 5, 7, 9, 12, 14, 16, 19],
+    "Zen":                [0, 5, 7, 8, 12, 14, 15, 19],
+    "Tribal":             [0, 3, 7, 9, 12, 14, 16, 19]
+};
+
+const ROOT_BASES = {
+    "C": 256, "D": 288, "E": 324, "F": 343, "G": 192, "A": 216, "B": 243
+};
+
+// === GLOBALS ===
+let canvas, ctx;
+let currentGrid, nextGrid;
+let columnFreqs = [];
+let audioCtx = null;
+let masterGain, delayNode, delayGain, filterNode;
+let movementFilter, swellGain;
+let volLFO = null, filterLFO = null;
+let windObj = null;
+let drones = [];
+let isRunning = false;
+let updateInterval = 280;
+let lastUpdate = 0;
+let rafId = null;
+let audioInitialized = false;
+
+let currentScale  = "Tribal";
+let currentRoot   = "G";
+let globalPitchShift = 0;
+let droneNotes    = [0, 7, 12];
+let droneMasterVol = 0.5;
+let delayTimeVal   = 0.4;
+let delayFeedbackVal = 0.35;
+let delayCutoffVal = 2500;
+
+// ── Utility ───────────────────────────────────────────────────
+
+function updateSliderFill(sliderId, fillId, min, max) {
+    const slider = document.getElementById(sliderId);
+    const fill   = document.getElementById(fillId);
+    if (!slider || !fill) return;
+    const pct = ((+slider.value - min) / (max - min)) * 100;
+    fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+}
+
+// ── Theme ─────────────────────────────────────────────────────
+
+function toggleTheme() {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const next    = isLight ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('bells-theme', next);
+    document.getElementById('theme-icon-moon').style.display = next === 'light' ? 'none' : '';
+    document.getElementById('theme-icon-sun').style.display  = next === 'light' ? ''     : 'none';
+}
+
+// ── Info Modal ────────────────────────────────────────────────
+
+function toggleInfo() {
+    const m = document.getElementById('info-modal');
+    m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
+}
+
+// ── Cellular Automaton ────────────────────────────────────────
+
+function initGrids() {
+    currentGrid = Array.from({length: ROWS}, () => Array(COLS).fill(0));
+    nextGrid    = Array.from({length: ROWS}, () => Array(COLS).fill(0));
+}
+
+function randomize(density = 0.16) {
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            currentGrid[r][c] = Math.random() < density ? 1 : 0;
+        }
+    }
+}
+
+function gustWind() {
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            if (Math.random() < 0.06) currentGrid[r][c] = 1;
+        }
+    }
+}
+
+function clearGrid() {
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) currentGrid[r][c] = 0;
+    }
+}
+
+function countNeighbors(r, c) {
+    let count = 0;
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = (r + dr + ROWS) % ROWS;
+            const nc = (c + dc + COLS) % COLS;
+            count += currentGrid[nr][nc];
+        }
+    }
+    return count;
+}
+
+function updateCA() {
+    const birthCounts = new Array(COLS).fill(0);
+
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            const n = countNeighbors(r, c);
+            const alive    = currentGrid[r][c];
+            const willLive = (alive && (n === 2 || n === 3)) || (!alive && n === 3);
+            nextGrid[r][c] = willLive ? 1 : 0;
+            if (!alive && willLive) birthCounts[c]++;
+        }
+    }
+
+    [currentGrid, nextGrid] = [nextGrid, currentGrid];
+
+    if (audioCtx && audioInitialized) {
+        for (let c = 0; c < COLS; c++) {
+            if (birthCounts[c] > 0) {
+                const intensity = Math.min(1, birthCounts[c] / 6);
+                playChime(c, intensity, birthCounts[c]);
+            }
+        }
+    }
+}
+
+// ── Audio ─────────────────────────────────────────────────────
+
+function playChime(col, intensity, birthCount) {
+    if (!audioCtx || !masterGain) return;
+
+    const freq = columnFreqs[col]
+        * Math.pow(2, globalPitchShift / 12)
+        * (0.98 + Math.random() * 0.04);
+
+    const now       = audioCtx.currentTime;
+    const baseDecay = 2.2 + Math.random() * 1.4;
+    const decay     = baseDecay + Math.min(3, (birthCount - 1) * 0.4);
+
+    const osc  = audioCtx.createOscillator();
+    osc.type   = 'triangle';
+    osc.frequency.value = freq;
+
+    const harm = audioCtx.createOscillator();
+    harm.type  = 'sine';
+    harm.frequency.value = freq * 2.8;
+
+    const gain     = audioCtx.createGain();
+    const harmGain = audioCtx.createGain();
+    harmGain.gain.value = 0.28;
+
+    osc.connect(gain);
+    harm.connect(harmGain);
+    harmGain.connect(gain);
+
+    if (freq > delayCutoffVal) {
+        const delaySend = audioCtx.createGain();
+        delaySend.gain.value = 0.4;
+        gain.connect(delaySend);
+        delaySend.connect(delayNode);
+    }
+
+    gain.connect(masterGain);
+
+    const startVol = 0.14 * intensity;
+    gain.gain.setValueAtTime(startVol, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + decay);
+
+    osc.start(now);
+    harm.start(now);
+
+    setTimeout(() => { osc.stop(); harm.stop(); }, (decay + 0.2) * 1000);
+}
+
+function initAudio() {
+    if (audioInitialized) return;
+
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.72;
+    masterGain.connect(audioCtx.destination);
+
+    delayNode = audioCtx.createDelay(1.5);
+    delayNode.delayTime.value = delayTimeVal;
+
+    delayGain = audioCtx.createGain();
+    delayGain.gain.value = delayFeedbackVal;
+    delayNode.connect(delayGain);
+    delayGain.connect(delayNode);
+    delayNode.connect(masterGain);
+
+    filterNode = audioCtx.createBiquadFilter();
+    filterNode.type = 'lowpass';
+    filterNode.frequency.value = delayCutoffVal;
+    delayNode.connect(filterNode);
+    filterNode.connect(masterGain);
+
+    // Movement chain (drones pass through this)
+    movementFilter = audioCtx.createBiquadFilter();
+    movementFilter.type = 'lowpass';
+    movementFilter.frequency.value = 920;
+    movementFilter.Q.value = 0.8;
+
+    swellGain = audioCtx.createGain();
+    swellGain.gain.value = 1.0;
+
+    movementFilter.connect(swellGain);
+    swellGain.connect(masterGain);
+
+    updateColumnFreqs();
+
+    const droneBases = [
+        ROOT_BASES[currentRoot],
+        ROOT_BASES[currentRoot] * Math.pow(2, 7 / 12),
+        ROOT_BASES[currentRoot] * 2
+    ];
+    drones = droneBases.map((f, i) => {
+        const d = createDrone(f, 0.07 - i * 0.02);
+        d.gain.connect(movementFilter);
+        return d;
+    });
+
+    audioInitialized = true;
+    updateDroneFreqs();
+    updateDelayParams();
+}
+
+function createDrone(baseFreq, baseVol) {
+    const osc = audioCtx.createOscillator();
+    osc.type  = 'sine';
+    osc.frequency.value = baseFreq;
+
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0;
+
+    osc.connect(gain);
+    osc.start();
+
+    return { osc, gain, baseFreq, baseVol };
+}
+
+function updateDroneVolumes() {
+    if (!audioInitialized) return;
+    const on     = document.getElementById('droneToggle').checked;
+    const target = on ? droneMasterVol : 0;
+    drones.forEach(d => {
+        d.gain.gain.setTargetAtTime(d.baseVol * target, audioCtx.currentTime, 0.8);
+    });
+}
+
+function toggleMovement(on) {
+    if (!audioInitialized) return;
+
+    if (on) {
+        if (!volLFO) {
+            volLFO = audioCtx.createOscillator();
+            volLFO.type = 'sine';
+            volLFO.frequency.value = 0.16;
+            const volDepth = audioCtx.createGain();
+            volDepth.gain.value = 0.28;
+            volLFO.connect(volDepth);
+            volDepth.connect(swellGain.gain);
+            volLFO.start();
+        }
+        if (!filterLFO) {
+            filterLFO = audioCtx.createOscillator();
+            filterLFO.type = 'sine';
+            filterLFO.frequency.value = 0.085;
+            const filterDepth = audioCtx.createGain();
+            filterDepth.gain.value = 420;
+            filterLFO.connect(filterDepth);
+            filterDepth.connect(movementFilter.frequency);
+            filterLFO.start();
+        }
+    } else {
+        if (volLFO)    { volLFO.stop();    volLFO    = null; }
+        if (filterLFO) { filterLFO.stop(); filterLFO = null; }
+
+        swellGain.gain.cancelScheduledValues(audioCtx.currentTime);
+        swellGain.gain.setValueAtTime(1.0, audioCtx.currentTime);
+
+        movementFilter.frequency.cancelScheduledValues(audioCtx.currentTime);
+        movementFilter.frequency.setValueAtTime(920, audioCtx.currentTime);
+    }
+}
+
+function updateDelayParams() {
+    if (!audioInitialized) return;
+    delayNode.delayTime.setTargetAtTime(delayTimeVal,     audioCtx.currentTime, 0.05);
+    delayGain.gain.setTargetAtTime(delayFeedbackVal,      audioCtx.currentTime, 0.05);
+    filterNode.frequency.setTargetAtTime(delayCutoffVal,  audioCtx.currentTime, 0.1);
+}
+
+function toggleWind(on) {
+    if (!audioCtx || !audioInitialized) return;
+    if (!windObj) windObj = createWind();
+    windObj.gain.gain.setTargetAtTime(on ? 0.12 : 0, audioCtx.currentTime, 1.2);
+}
+
+function createWind() {
+    const duration   = 4;
+    const bufferSize = audioCtx.sampleRate * duration;
+    const buffer     = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data       = buffer.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        last    = last * 0.84 + white * 0.16;
+        data[i] = last * 0.55;
+    }
+
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.loop   = true;
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type  = 'lowpass';
+    filter.frequency.value = 480;
+    filter.Q.value = 0.6;
+
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0;
+
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGain);
+    source.start();
+
+    return { source, gain, filter };
+}
+
+// ── Frequency mapping ─────────────────────────────────────────
+
+function getNoteNameFromSemitones(semi) {
+    const names = ['Root', 'min 2nd', 'Maj 2nd', 'min 3rd', 'Maj 3rd',
+                   'Perf 4th', 'Tritone', 'Perf 5th', 'min 6th', 'Maj 6th',
+                   'min 7th', 'Maj 7th'];
+    return names[semi % 12] || `+${semi % 12}`;
+}
+
+function updateColumnFreqs() {
+    const intervals = SCALES[currentScale];
+    const rootBase  = ROOT_BASES[currentRoot];
+    columnFreqs = [];
+
+    for (let c = 0; c < COLS; c++) {
+        const idx    = c % intervals.length;
+        const octave = Math.floor(c / intervals.length);
+        columnFreqs.push(rootBase * Math.pow(2, (intervals[idx] / 12) + octave));
+    }
+
+    // Rebuild drone note selects
+    const noteOptions = intervals.map(semi => ({ semi, label: getNoteNameFromSemitones(semi) }));
+    const extendedOptions = [
+        ...noteOptions.map(o => ({ ...o, octave: -1, label: o.label + ' low' })),
+        ...noteOptions.map(o => ({ ...o, octave:  0 })),
+        ...noteOptions.map(o => ({ ...o, octave:  1, label: o.label + ' high' }))
+    ].sort((a, b) => (a.octave * 12 + a.semi) - (b.octave * 12 + b.semi));
+
+    ['drone1Note', 'drone2Note', 'drone3Note'].forEach((id, idx) => {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '';
+        extendedOptions.forEach(opt => {
+            const option    = document.createElement('option');
+            option.value    = opt.semi + opt.octave * 12;
+            option.text     = opt.label;
+            if (opt.semi + opt.octave * 12 === droneNotes[idx]) option.selected = true;
+            sel.appendChild(option);
+        });
+    });
+
+    updateDroneFreqs();
+}
+
+function updateDroneFreqs() {
+    if (!audioInitialized) return;
+    [0, 1, 2].forEach(idx => {
+        const semi = parseFloat(document.getElementById(`drone${idx + 1}Note`).value);
+        if (!isNaN(semi)) {
+            droneNotes[idx] = semi;
+            const newFreq = ROOT_BASES[currentRoot] * Math.pow(2, semi / 12);
+            drones[idx].osc.frequency.setTargetAtTime(newFreq, audioCtx.currentTime, 0.3);
+        }
+    });
+}
+
+// ── Render ────────────────────────────────────────────────────
+
+function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            if (!currentGrid[r][c]) continue;
+            const x   = c * CELL_SIZE + CELL_SIZE / 2;
+            const y   = r * CELL_SIZE + CELL_SIZE / 2;
+            const hue = (195 + c * 9) % 360;
+
+            ctx.save();
+            ctx.shadowBlur  = 18;
+            ctx.shadowColor = `hsla(${hue}, 90%, 70%, 0.7)`;
+            ctx.fillStyle   = `hsla(${hue}, 85%, 75%, 0.9)`;
+            ctx.beginPath();
+            ctx.arc(x, y, CELL_SIZE * 0.38, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+}
+
+// ── Game loop ─────────────────────────────────────────────────
+
+function gameLoop(timestamp) {
+    if (!lastUpdate) lastUpdate = timestamp;
+    if (isRunning && (timestamp - lastUpdate) >= updateInterval) {
+        updateCA();
+        draw();
+        lastUpdate = timestamp;
+    }
+    rafId = requestAnimationFrame(gameLoop);
+}
+
+// ── Input handling ────────────────────────────────────────────
+
+function handlePointer(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width  / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const col = Math.floor((clientX - rect.left) * scaleX / CELL_SIZE);
+    const row = Math.floor((clientY - rect.top)  * scaleY / CELL_SIZE);
+    if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
+    currentGrid[row][col] = 1 - currentGrid[row][col];
+    if (currentGrid[row][col] === 1 && audioCtx && audioInitialized) playChime(col, 0.7, 1);
+    draw();
+}
+
+// ── UI setup ──────────────────────────────────────────────────
+
+function initFills() {
+    updateSliderFill('speedSlider',    'fill-speed',     80,   600);
+    updateSliderFill('pitchShift',     'fill-pitch',     -2,   2);
+    updateSliderFill('droneMasterVol', 'fill-drone-vol', 0,    100);
+    updateSliderFill('delayTime',      'fill-delay-time', 0,   1.2);
+    updateSliderFill('delayFeedback',  'fill-delay-fb',  0,    0.7);
+    updateSliderFill('delayCutoff',    'fill-delay-cut', 200,  8000);
+}
+
+function setupUI() {
+    canvas     = document.getElementById('canvas');
+    ctx        = canvas.getContext('2d');
+    canvas.width  = COLS * CELL_SIZE;
+    canvas.height = ROWS * CELL_SIZE;
+
+    // ── Transport ─────────────────────────────────────────────
+
+    const playBtn = document.getElementById('playBtn');
+    playBtn.addEventListener('click', () => {
+        if (!audioInitialized) {
+            initAudio();
+            audioCtx.resume().then(() => {
+                isRunning = !isRunning;
+                playBtn.textContent = isRunning ? 'PAUSE' : 'BEGIN';
+                playBtn.classList.toggle('active', isRunning);
+                if (isRunning) lastUpdate = performance.now();
+                updateDroneVolumes();
+            });
+        } else {
+            isRunning = !isRunning;
+            playBtn.textContent = isRunning ? 'PAUSE' : 'BEGIN';
+            playBtn.classList.toggle('active', isRunning);
+            if (isRunning) lastUpdate = performance.now();
+        }
+    });
+
+    document.getElementById('randomBtn').addEventListener('click', () => { randomize(); draw(); });
+    document.getElementById('gustBtn').addEventListener('click',   () => { gustWind(); draw(); });
+    document.getElementById('clearBtn').addEventListener('click',  () => { clearGrid(); draw(); });
+
+    // ── Playback controls ─────────────────────────────────────
+
+    document.getElementById('speedSlider').addEventListener('input', e => {
+        updateInterval = +e.target.value;
+        document.getElementById('val-speed').textContent = updateInterval + ' ms';
+        updateSliderFill('speedSlider', 'fill-speed', 80, 600);
+    });
+
+    document.getElementById('windToggle').addEventListener('change', e => {
+        if (!audioInitialized) initAudio();
+        toggleWind(e.target.checked);
+    });
+
+    document.getElementById('droneToggle').addEventListener('change', updateDroneVolumes);
+
+    document.getElementById('movementToggle').addEventListener('change', e => {
+        if (!audioInitialized) initAudio();
+        toggleMovement(e.target.checked);
+    });
+
+    // ── Tonality ──────────────────────────────────────────────
+
+    document.getElementById('scaleSelect').addEventListener('change', e => {
+        currentScale = e.target.value;
+        updateColumnFreqs();
+    });
+
+    document.getElementById('rootSelect').addEventListener('change', e => {
+        currentRoot = e.target.value;
+        updateColumnFreqs();
+    });
+
+    document.getElementById('pitchShift').addEventListener('input', e => {
+        globalPitchShift = +e.target.value;
+        const v = globalPitchShift;
+        document.getElementById('val-pitch').textContent = (v >= 0 ? '+' : '') + v.toFixed(1);
+        updateSliderFill('pitchShift', 'fill-pitch', -2, 2);
+    });
+
+    // ── Drones ────────────────────────────────────────────────
+
+    document.getElementById('drone1Note').addEventListener('change', updateDroneFreqs);
+    document.getElementById('drone2Note').addEventListener('change', updateDroneFreqs);
+    document.getElementById('drone3Note').addEventListener('change', updateDroneFreqs);
+
+    document.getElementById('droneMasterVol').addEventListener('input', e => {
+        droneMasterVol = +e.target.value / 100;
+        document.getElementById('val-drone-vol').textContent = e.target.value + '%';
+        updateSliderFill('droneMasterVol', 'fill-drone-vol', 0, 100);
+        updateDroneVolumes();
+    });
+
+    // ── Delay ─────────────────────────────────────────────────
+
+    document.getElementById('delayTime').addEventListener('input', e => {
+        delayTimeVal = +e.target.value;
+        document.getElementById('val-delay-time').textContent = delayTimeVal.toFixed(2) + 's';
+        updateSliderFill('delayTime', 'fill-delay-time', 0, 1.2);
+        updateDelayParams();
+    });
+
+    document.getElementById('delayFeedback').addEventListener('input', e => {
+        delayFeedbackVal = +e.target.value;
+        document.getElementById('val-delay-fb').textContent =
+            Math.round(delayFeedbackVal / 0.7 * 100) + '%';
+        updateSliderFill('delayFeedback', 'fill-delay-fb', 0, 0.7);
+        updateDelayParams();
+    });
+
+    document.getElementById('delayCutoff').addEventListener('input', e => {
+        delayCutoffVal = +e.target.value;
+        document.getElementById('val-delay-cut').textContent = delayCutoffVal + ' Hz';
+        updateSliderFill('delayCutoff', 'fill-delay-cut', 200, 8000);
+        updateDelayParams();
+    });
+
+    // ── Canvas interaction ────────────────────────────────────
+
+    canvas.addEventListener('click', e => handlePointer(e.clientX, e.clientY));
+    canvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        handlePointer(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+
+    // ── Theme icon sync on load ───────────────────────────────
+
+    const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+    document.getElementById('theme-icon-moon').style.display = theme === 'light' ? 'none' : '';
+    document.getElementById('theme-icon-sun').style.display  = theme === 'light' ? '' : 'none';
+
+    // ── Init fills & values ───────────────────────────────────
+    initFills();
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────
+
+window.onload = () => {
+    initGrids();
+    randomize(0.16);
+    setupUI();
+    draw();
+    requestAnimationFrame(gameLoop);
+
+    // Auto-gust every ~22 s while running, to prevent die-out
+    setInterval(() => {
+        if (isRunning && Math.random() < 0.35) { gustWind(); draw(); }
+    }, 22000);
+};
+
+</script>
+</body>
+</html>

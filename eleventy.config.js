@@ -43,6 +43,7 @@ export default async function(eleventyConfig) {
  
   eleventyConfig.addPassthroughCopy("src/styles.css");
   eleventyConfig.addPassthroughCopy("src/liminal.html");
+  eleventyConfig.addPassthroughCopy("src/bells.html");
 
   eleventyConfig.addFilter("featuredFirst", (arr, count = 3) => {
     const featured = arr.filter(post => post.data && post.data.featured);
