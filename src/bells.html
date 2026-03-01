@@ -1000,6 +1000,13 @@ function playChime(col, intensity, birthCount) {
 function initAudio() {
     if (audioInitialized) return;
 
+    // iOS Safari: declare this as a playback app so audio routes through
+    // the speaker and plays regardless of the hardware silent switch.
+    // Falls back gracefully on unsupported browsers.
+    if (navigator.audioSession) {
+        navigator.audioSession.type = 'playback';
+    }
+
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     masterGain = audioCtx.createGain();
