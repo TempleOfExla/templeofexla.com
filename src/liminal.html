@@ -1798,6 +1798,9 @@ const DRIFT_DEPTH = 8;     // ± Hz
 const toneAuto = {};
 const TONE_ADSR = { attack: 4, decay: 0.5, sustain: 0.75, hold: 2, release: 6 };
 
+// Track oscillators scheduled by fireToneAt so they can be cancelled on stop/disable
+let _scheduledToneOscs = [];
+
 // Fade / session timer
 const FADE_IN_SECS          = 4;
 const FADE_OUT_SECS         = 4;
@@ -2601,6 +2604,14 @@ function fireToneAt(hz, absCtxTime, adsrOverride) {
   if (reverbEnabled) { initReverb(); env.connect(reverbNode); }
   osc.start(t);
   osc.stop(t + dur + 0.1);
+
+  _scheduledToneOscs.push(osc);
+  osc.onended = () => { _scheduledToneOscs = _scheduledToneOscs.filter(o => o !== osc); };
+}
+
+function cancelScheduledTones() {
+  _scheduledToneOscs.forEach(osc => { try { osc.stop(); } catch(e) {} osc.disconnect(); });
+  _scheduledToneOscs = [];
 }
 
 function markTonePlaying(hz, dur) {
@@ -2665,7 +2676,7 @@ function togglePlay() {
   }
 
   updateMediaSession(isPlaying);
-  if (isPlaying) _requestWakeLock(); else _releaseWakeLock();
+  if (isPlaying) { _requestWakeLock(); _startWakeLockRenew(); } else _releaseWakeLock();
   updateTimerDisplay();
   updateInfoBar();
 }
@@ -2877,6 +2888,7 @@ function toggleChannel(ch) {
       else if (ch === 'noise')    stopNoise();
       else if (ch === 'ocean')    stopOcean();
       else if (ch === 'iso')      stopIsochronic();
+      else if (ch === 'tones')    cancelScheduledTones();
     }
   }
   updateInfoBar();
@@ -3357,6 +3369,9 @@ function stopSequence() {
   seqTickInterval = null;
   seqStartCtxTime = null;
   _seqSchedule    = null;
+
+  // Cancel any tone oscillators that were pre-scheduled but haven't played yet
+  cancelScheduledTones();
 
   // Restore session timer to its pre-sequence state
   stopSessionTimer();
@@ -4094,17 +4109,20 @@ document.addEventListener('visibilitychange', () => {
     audioCtx.resume();
   }
   // Re-acquire wake lock when page becomes visible again (lock is auto-released on hide)
-  if (!document.hidden && isPlaying) _requestWakeLock();
+  if (!document.hidden && isPlaying) { _requestWakeLock(); _startWakeLockRenew(); }
 });
 
 // ── Screen Wake Lock ────────────────────────────────────
 let _wakeLock = null;
+let _wakeLockRenewTimer = null;
 
 async function _requestWakeLock() {
   if (!('wakeLock' in navigator)) return;
+  // If we already hold an active lock, nothing to do
+  if (_wakeLock && !_wakeLock.released) return;
   try {
     _wakeLock = await navigator.wakeLock.request('screen');
-    // Re-request if the browser releases the lock while we're still playing
+    // Re-request if the browser fires the release event
     _wakeLock.addEventListener('release', () => {
       if (isPlaying && !document.hidden) _requestWakeLock();
     });
@@ -4113,7 +4131,19 @@ async function _requestWakeLock() {
   }
 }
 
+function _startWakeLockRenew() {
+  clearInterval(_wakeLockRenewTimer);
+  // iOS can silently drop the lock without firing the release event.
+  // Poll every 20 s and re-request if the sentinel has been released.
+  _wakeLockRenewTimer = setInterval(() => {
+    if (!isPlaying || document.hidden) return;
+    if (!_wakeLock || _wakeLock.released) _requestWakeLock();
+  }, 20000);
+}
+
 function _releaseWakeLock() {
+  clearInterval(_wakeLockRenewTimer);
+  _wakeLockRenewTimer = null;
   _wakeLock?.release();
   _wakeLock = null;
 }
