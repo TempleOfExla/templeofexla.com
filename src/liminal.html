@@ -2664,7 +2664,12 @@ function togglePlay() {
   const btn = document.getElementById('power-btn');
   btn.classList.toggle('active', isPlaying);
 
-  // Start silent audio + MediaSession on first play (requires user gesture)
+  // Request wake lock FIRST — before any audio work that takes synchronous time.
+  // The Wake Lock API requires being called within the user gesture activation window,
+  // and startSequence() does enough work to push past it if called first.
+  if (isPlaying) { _requestWakeLock(); _startWakeLockRenew(); } else _releaseWakeLock();
+
+  // Start silent audio on first play (requires user gesture)
   if (isPlaying) setupBackgroundAudio();
 
   if (seqEnabled) {
@@ -2676,7 +2681,6 @@ function togglePlay() {
   }
 
   updateMediaSession(isPlaying);
-  if (isPlaying) { _requestWakeLock(); _startWakeLockRenew(); } else _releaseWakeLock();
   updateTimerDisplay();
   updateInfoBar();
 }
