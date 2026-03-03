@@ -3905,9 +3905,6 @@ updateSliderFill('sl-ch-tones-vol',    CH.tones.vol,    0, 1);
 renderTonePalette();
 _updateBeatPulse();
 
-// Start idle visualiser loop (no-op if canvas removed)
-if (canvas) drawViz();
-
 // Init audio on first power-button click to satisfy autoplay policy
 
 // Resume AudioContext on any interaction (iOS Safari re-suspends between gestures)
