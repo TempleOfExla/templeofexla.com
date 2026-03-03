@@ -2591,9 +2591,6 @@ function fireTone(hz) {
   initAudio();
   if (!tonesPan) return;
   if (!CH.tones.enabled) return;
-  // Do NOT call startViz() here — stereo splitter setup can throw on mono
-  // mobile pipelines and would silently abort the rest of this function.
-
   // Resume synchronously within the gesture handler — iOS requires audio
   // operations to stay in the synchronous call stack of the user gesture.
   if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -2715,7 +2712,7 @@ function togglePlay() {
     if (isPlaying) startSequence();
     else           stopSequence();
   } else {
-    if (isPlaying) { startAudio(); if (!analyser) startViz(); }
+    if (isPlaying) { startAudio(); }
     else           stopAudio();
   }
 
@@ -3403,7 +3400,6 @@ function startSequence() {
   startSessionTimer();
 
   _seqCurrentStep = -1;
-  if (!analyser) startViz();
   document.getElementById('seq-progress').style.display = 'block';
   seqTickInterval = setInterval(tickSequence, 100);
   updateSeqRunBtn(true);
@@ -3888,196 +3884,6 @@ function makeProgCard(prog, loadFn, delFn) {
 }
 
 // ══════════════════════════════════════════════════════
-// VISUALISER
-// ══════════════════════════════════════════════════════
-
-const canvas = document.getElementById('viz');
-const ctx2d  = canvas ? canvas.getContext('2d') : null;
-// ── Visualiser ────────────────────────────────────────
-
-let analyser     = null;
-let analyserL    = null;
-let analyserR    = null;
-let vizData      = null;
-let vizDataL     = null;
-let vizDataR     = null;
-let vizRaf       = null;
-let vizMode      = 'waveform';  // 'waveform' | 'lissajous'
-
-const VIZ_H_WAVE = 96;
-const VIZ_H_LISS = 200;
-
-function startViz() {
-  if (!audioCtx || analyser) return;
-
-  // Mono analyser for waveform
-  analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 2048;
-  analyser.smoothingTimeConstant = 0.85;
-  masterGain.connect(analyser);
-  vizData = new Uint8Array(analyser.frequencyBinCount);
-
-  // Stereo split for Lissajous — wrapped in try/catch because mono mobile
-  // pipelines can throw an IndexSizeError on splitter output 1
-  try {
-    const splitter = audioCtx.createChannelSplitter(2);
-    masterGain.connect(splitter);
-    analyserL = audioCtx.createAnalyser();
-    analyserR = audioCtx.createAnalyser();
-    analyserL.fftSize = 2048; analyserL.smoothingTimeConstant = 0.6;
-    analyserR.fftSize = 2048; analyserR.smoothingTimeConstant = 0.6;
-    splitter.connect(analyserL, 0);
-    splitter.connect(analyserR, 1);
-    vizDataL = new Float32Array(analyserL.fftSize);
-    vizDataR = new Float32Array(analyserR.fftSize);
-  } catch(e) {
-    // Lissajous unavailable on this device; waveform mode still works
-    analyserL = null; analyserR = null;
-    if (vizMode === 'lissajous') vizMode = 'waveform';
-  }
-
-  if (!vizRaf) drawViz();
-}
-
-function toggleVizMode() {
-  if (!canvas) return;
-  vizMode = vizMode === 'waveform' ? 'lissajous' : 'waveform';
-  const h = vizMode === 'lissajous' ? VIZ_H_LISS : VIZ_H_WAVE;
-  canvas.height = h;
-  canvas.style.height = h + 'px';
-  const lbl = document.getElementById('viz-label');
-  if (lbl) lbl.textContent = vizMode === 'lissajous' ? 'Lissajous' : 'Waveform';
-}
-
-function drawViz() {
-  if (!canvas || !ctx2d) return;
-  vizRaf = requestAnimationFrame(drawViz);
-  if (vizMode === 'lissajous') drawLissajous();
-  else                         drawWaveformViz();
-}
-
-function _vizColors() {
-  const light = document.documentElement.getAttribute('data-theme') === 'light';
-  return {
-    bg:     light ? '#f0f4f8' : '#0d1117',
-    bgFade: light ? 'rgba(240,244,248,0.18)' : 'rgba(13,17,23,0.18)',
-    grid:   light ? 'rgba(0,140,160,.06)'    : 'rgba(0,229,204,.04)',
-    midline:light ? 'rgba(0,140,160,.15)'    : 'rgba(0,229,204,.08)',
-    glow:   light ? '#007799'                : '#00e5cc',
-    stroke: light ? 'rgba(0,120,150,.5)'     : 'rgba(0,229,204,.4)',
-    bright: light ? '#006688'                : '#00e5cc',
-    idle:   light ? 'rgba(0,120,150,.3)'     : 'rgba(0,229,204,.2)',
-  };
-}
-
-function drawWaveformViz() {
-  const W = canvas.width;
-  const H = canvas.height;
-  const c = _vizColors();
-
-  ctx2d.fillStyle = c.bg;
-  ctx2d.fillRect(0, 0, W, H);
-
-  ctx2d.strokeStyle = c.grid;
-  ctx2d.lineWidth = 1;
-  for (let x = 0; x < W; x += 40) {
-    ctx2d.beginPath(); ctx2d.moveTo(x, 0); ctx2d.lineTo(x, H); ctx2d.stroke();
-  }
-  for (let y = 0; y < H; y += 24) {
-    ctx2d.beginPath(); ctx2d.moveTo(0, y); ctx2d.lineTo(W, y); ctx2d.stroke();
-  }
-  ctx2d.strokeStyle = c.midline;
-  ctx2d.beginPath(); ctx2d.moveTo(0, H/2); ctx2d.lineTo(W, H/2); ctx2d.stroke();
-
-  if (!isPlaying || !analyser) {
-    ctx2d.strokeStyle = c.idle;
-    ctx2d.lineWidth = 1.5;
-    ctx2d.beginPath(); ctx2d.moveTo(0, H/2); ctx2d.lineTo(W, H/2); ctx2d.stroke();
-    return;
-  }
-
-  analyser.getByteTimeDomainData(vizData);
-
-  ctx2d.shadowBlur = 8;
-  ctx2d.shadowColor = c.glow;
-  ctx2d.strokeStyle = c.stroke;
-  ctx2d.lineWidth = 3;
-  _drawWaveformPath(W, H);
-  ctx2d.shadowBlur = 0;
-  ctx2d.strokeStyle = c.bright;
-  ctx2d.lineWidth = 1.5;
-  _drawWaveformPath(W, H);
-}
-
-function _drawWaveformPath(W, H) {
-  const sliceW = W / vizData.length;
-  ctx2d.beginPath();
-  for (let i = 0; i < vizData.length; i++) {
-    const v = vizData[i] / 128 - 1;
-    const y = (v * H * 0.42) + H / 2;
-    if (i === 0) ctx2d.moveTo(0, y);
-    else ctx2d.lineTo(i * sliceW, y);
-  }
-  ctx2d.stroke();
-}
-
-function drawLissajous() {
-  const W  = canvas.width;
-  const H  = canvas.height;
-  const cx = W / 2;
-  const cy = H / 2;
-  const r  = (H / 2) * 0.82;
-  const c  = _vizColors();
-
-  // Persistence: semi-transparent fill instead of full clear
-  ctx2d.fillStyle = c.bgFade;
-  ctx2d.fillRect(0, 0, W, H);
-
-  // Crosshairs
-  ctx2d.strokeStyle = c.grid;
-  ctx2d.lineWidth = 1;
-  ctx2d.beginPath(); ctx2d.moveTo(cx, 0); ctx2d.lineTo(cx, H); ctx2d.stroke();
-  ctx2d.beginPath(); ctx2d.moveTo(0, cy); ctx2d.lineTo(W, cy); ctx2d.stroke();
-  // Circle guide
-  ctx2d.beginPath();
-  ctx2d.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx2d.strokeStyle = c.grid;
-  ctx2d.stroke();
-
-  if (!isPlaying || !analyserL || !analyserR) {
-    // Idle: draw a static diagonal line (mono)
-    ctx2d.strokeStyle = c.idle;
-    ctx2d.lineWidth = 1.5;
-    ctx2d.beginPath();
-    ctx2d.moveTo(cx - r * 0.6, cy + r * 0.6);
-    ctx2d.lineTo(cx + r * 0.6, cy - r * 0.6);
-    ctx2d.stroke();
-    return;
-  }
-
-  analyserL.getFloatTimeDomainData(vizDataL);
-  analyserR.getFloatTimeDomainData(vizDataR);
-
-  const len = vizDataL.length;
-  const step = Math.max(1, Math.floor(len / 1024));  // max 1024 points
-
-  ctx2d.shadowBlur = 6;
-  ctx2d.shadowColor = c.glow;
-  ctx2d.strokeStyle = c.stroke;
-  ctx2d.lineWidth = 1.8;
-  ctx2d.beginPath();
-  let first = true;
-  for (let i = 0; i < len; i += step) {
-    const x = cx + vizDataL[i] * r;
-    const y = cy - vizDataR[i] * r;
-    if (first) { ctx2d.moveTo(x, y); first = false; }
-    else ctx2d.lineTo(x, y);
-  }
-  ctx2d.stroke();
-  ctx2d.shadowBlur = 0;
-}
-
-// ══════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════
 
@@ -4103,9 +3909,6 @@ _updateBeatPulse();
 if (canvas) drawViz();
 
 // Init audio on first power-button click to satisfy autoplay policy
-document.getElementById('power-btn').addEventListener('click', () => {
-  if (!analyser && audioCtx) startViz();
-}, { once: false });
 
 // Resume AudioContext on any interaction (iOS Safari re-suspends between gestures)
 document.addEventListener('click', () => {
