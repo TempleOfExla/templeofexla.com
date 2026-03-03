@@ -1642,7 +1642,7 @@ input[type=range]::-moz-range-thumb {
         </div>
         <div class="iso-num-group">
           <span class="layer-slider-label">hz</span>
-          <input type="number" class="iso-num-input" id="iso-carrier-input" value="174" min="20" max="2000"
+          <input type="number" class="iso-num-input" id="iso-carrier-input" value="174" min="20" max="8000"
             title="Iso carrier frequency"
             oninput="updateIsoCarrier(this.value)"
             onblur="this.value=CH.iso.carrier"
@@ -2400,7 +2400,7 @@ function updateIsoBeat(v) {
 }
 
 function updateIsoCarrier(v) {
-  CH.iso.carrier = Math.min(2000, Math.max(20, parseFloat(v) || 174));
+  CH.iso.carrier = Math.min(8000, Math.max(20, parseFloat(v) || 174));
   updateIsochronicOsc();
 }
 
@@ -3224,8 +3224,8 @@ function renderSeqSteps() {
       `<span class="seq-step-num">${i + 1}</span>` +
       `<label class="seq-field">` +
         `<span class="seq-label">Beat Hz</span>` +
-        `<input class="seq-input" type="number" value="${step.beat.toFixed(1)}" min="0.1" max="100" step="0.1"` +
-          ` onblur="updateSeqStep(${i},'beat',this.value);this.value=seqSteps[${i}].beat.toFixed(1)"` +
+        `<input class="seq-input" type="number" value="${step.beat.toFixed(2)}" min="0.1" max="100" step="0.01"` +
+          ` onblur="updateSeqStep(${i},'beat',this.value);this.value=seqSteps[${i}].beat.toFixed(2)"` +
           ` onkeydown="if(event.key==='Enter')this.blur()">` +
       `</label>` +
       `<label class="seq-field">` +
