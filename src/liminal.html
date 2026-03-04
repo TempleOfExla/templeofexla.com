@@ -1526,6 +1526,32 @@ input[type=range]::-moz-range-thumb {
       Tone Reverb
       <span class="option-hint">3.5 s convolution bloom</span>
     </label>
+    <label class="option-check">
+      <input type="checkbox" id="opt-rampin" onchange="toggleRampIn(this.checked)">
+      Freq Lead-in
+      <span class="option-hint">start above target, ramp down</span>
+    </label>
+  </div>
+  <div class="rampin-row adsr-row" id="rampin-row" style="display:none">
+    <span class="adsr-label">Lead-in</span>
+    <div class="adsr-field">
+      <span class="layer-slider-label">above</span>
+      <input type="number" class="iso-num-input adsr-input" id="rampin-delta"
+        value="6" min="1" max="20" step="1"
+        oninput="updateRampInDelta(this.value)"
+        onblur="this.value=rampInDelta"
+        onkeydown="if(event.key==='Enter')this.blur()">
+      <span class="adsr-unit">Hz</span>
+    </div>
+    <div class="adsr-field">
+      <span class="layer-slider-label">over</span>
+      <input type="number" class="iso-num-input adsr-input" id="rampin-mins"
+        value="3" min="0.5" max="15" step="0.5"
+        oninput="updateRampInMins(this.value)"
+        onblur="this.value=rampInMins"
+        onkeydown="if(event.key==='Enter')this.blur()">
+      <span class="adsr-unit">min</span>
+    </div>
   </div>
 
   <!-- Sacred Frequency Palette -->
@@ -1749,6 +1775,7 @@ input[type=range]::-moz-range-thumb {
       <button class="seq-action-btn" onclick="exportSeq()">↓ JSON</button>
       <button class="seq-action-btn" onclick="importSeqTrigger()">↑ File</button>
       <button class="seq-action-btn" onclick="toggleUrlImport()">↑ URL</button>
+      <button class="seq-action-btn" id="seq-share-btn" onclick="shareSeqUrl()">⧉ Link</button>
       <button class="seq-action-btn" id="seq-lib-btn" onclick="toggleLibrary()">☰ Library</button>
     </div>
     <div class="seq-url-row" id="seq-url-row" style="display:none">
@@ -1796,7 +1823,7 @@ input[type=range]::-moz-range-thumb {
     <p class="info-body">Play 200 Hz in your left ear and 210 Hz in your right, and your brain perceives the 10 Hz <em>difference</em> as a slow pulse — and gradually synchronises to it. This is called the <strong>frequency-following response</strong>. Different beat frequencies correspond to different brain states: delta for deep sleep, theta for hypnagogic meditation, alpha for calm alertness, beta for active thinking. <strong>Headphones are essential</strong> — the stereo separation between ears is what creates the effect.</p>
 
     <h3 class="info-section">What you can do</h3>
-    <p class="info-body">Mix up to six simultaneous audio layers: binaural beats, isochronic pulses (work without headphones), coloured noise, a procedural ocean soundscape, an ambient file player (load any audio), and sacred-frequency tones with configurable ADSR envelopes. Each layer has its own volume and pan. Use the brainwave presets to jump to common targets, or build a custom <strong>Session Sequence</strong> that ramps frequencies through any arc you design, with timed tone cues firing at precise moments.</p>
+    <p class="info-body">Mix up to six simultaneous audio layers: binaural beats, isochronic pulses (work without headphones), coloured noise, a procedural ocean soundscape, an ambient file player (load any audio), and sacred-frequency tones with configurable ADSR envelopes. Each layer has its own volume and pan. Use the brainwave presets to jump to common targets, or build a custom <strong>Session Sequence</strong> that ramps frequencies through any arc you design, with timed tone cues firing at precise moments. Share any sequence instantly with the <strong>⧉ Link</strong> button — the full program is compressed into a URL you can paste anywhere.</p>
 
     <h3 class="info-section">Try: Chakra Reset ✦</h3>
     <p class="info-body">A 21-minute guided session divided into seven 3-minute segments — one for each chakra. The binaural beat traces a bell curve: opening at 10 Hz mid-alpha, descending through the Schumann resonance (7.83 Hz) into 6.5 Hz theta at the heart centre, then rising back to alpha by the crown. Each segment fires the corresponding Solfeggio frequency tone at the start of its hold phase. The heart segment adds 432 Hz (universal harmony). The session opens with a long Om bell (111 Hz) and closes with an extended 963 Hz crown tone followed by a final Om. Ocean is enabled throughout. Find the <strong>Chakra Reset</strong> button in the Brainwave Presets section.</p>
@@ -1868,6 +1895,11 @@ let driftGain    = null;
 let driftEnabled = false;
 const DRIFT_RATE = 0.007;  // Hz — ~143 s cycle
 const DRIFT_DEPTH = 8;     // ± Hz
+
+// Frequency lead-in (ramp-in)
+let rampInEnabled = false;
+let rampInDelta   = 6;   // Hz above target beat to start
+let rampInMins    = 3;   // minutes to ramp down to target
 
 // Tone auto-play state
 const toneAuto = {};
@@ -2177,6 +2209,24 @@ function toggleReverb(enabled) {
   // initReverb() is called lazily in fireTone when first needed
 }
 
+function toggleRampIn(checked) {
+  rampInEnabled = checked;
+  const row = document.getElementById('rampin-row');
+  if (row) row.style.display = checked ? 'flex' : 'none';
+}
+
+function updateRampInDelta(v) {
+  rampInDelta = Math.max(1, Math.min(20, parseFloat(v) || 6));
+  const el = document.getElementById('rampin-delta');
+  if (el) el.value = rampInDelta;
+}
+
+function updateRampInMins(v) {
+  rampInMins = Math.max(0.5, Math.min(15, parseFloat(v) || 3));
+  const el = document.getElementById('rampin-mins');
+  if (el) el.value = rampInMins;
+}
+
 function initAudio() {
   if (audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2372,7 +2422,12 @@ function startBinaural() {
 
   rightOsc = audioCtx.createOscillator();
   rightOsc.type = waveType;
-  rightOsc.frequency.setValueAtTime(rFreq, now);
+  if (rampInEnabled && !seqEnabled) {
+    rightOsc.frequency.setValueAtTime(rFreq + rampInDelta, now);
+    rightOsc.frequency.linearRampToValueAtTime(rFreq, now + rampInMins * 60);
+  } else {
+    rightOsc.frequency.setValueAtTime(rFreq, now);
+  }
 
   rightPan = audioCtx.createStereoPanner();
   rightPan.pan.setValueAtTime(1, now);
@@ -3178,15 +3233,24 @@ function buildSeqSchedule(stepsArg) {
 }
 
 function applySchedule(events, t0) {
+  let first = true;
   for (const ev of events) {
     const absT = t0 + ev.t;
     if (leftOsc && rightOsc) {
-      if (ev.type === 'set') {
+      if (first && rampInEnabled) {
+        // Lead-in: override first event to start above target and ramp down
+        leftOsc.frequency.setValueAtTime(ev.carrier, absT);
+        rightOsc.frequency.setValueAtTime(ev.carrier + ev.beat + rampInDelta, absT);
+        rightOsc.frequency.linearRampToValueAtTime(ev.carrier + ev.beat, absT + rampInMins * 60);
+        first = false;
+      } else if (ev.type === 'set') {
         leftOsc.frequency.setValueAtTime(ev.carrier, absT);
         rightOsc.frequency.setValueAtTime(ev.carrier + ev.beat, absT);
+        first = false;
       } else {
         leftOsc.frequency.linearRampToValueAtTime(ev.carrier, absT);
         rightOsc.frequency.linearRampToValueAtTime(ev.carrier + ev.beat, absT);
+        first = false;
       }
     }
   }
@@ -3681,6 +3745,7 @@ function captureMixerState() {
     isoDuty,
     driftEnabled,
     reverbEnabled,
+    rampInEnabled, rampInDelta, rampInMins,
     toneAdsr:  { attack: TONE_ADSR.attack, decay: TONE_ADSR.decay, sustain: TONE_ADSR.sustain, hold: TONE_ADSR.hold, release: TONE_ADSR.release },
     binaural: { enabled: CH.binaural.enabled, vol: CH.binaural.vol },
     noise:    { enabled: CH.noise.enabled,    vol: CH.noise.vol,    pan: CH.noise.pan,  type: CH.noise.type },
@@ -3740,6 +3805,25 @@ function applyMixerState(mixer) {
     reverbEnabled = mixer.reverbEnabled;
     const cb = document.getElementById('opt-reverb');
     if (cb) cb.checked = reverbEnabled;
+  }
+
+  // Freq lead-in
+  if (mixer.rampInEnabled != null) {
+    rampInEnabled = mixer.rampInEnabled;
+    const cb = document.getElementById('opt-rampin');
+    if (cb) cb.checked = rampInEnabled;
+    const row = document.getElementById('rampin-row');
+    if (row) row.style.display = rampInEnabled ? 'flex' : 'none';
+  }
+  if (mixer.rampInDelta != null) {
+    rampInDelta = mixer.rampInDelta;
+    const el = document.getElementById('rampin-delta');
+    if (el) el.value = rampInDelta;
+  }
+  if (mixer.rampInMins != null) {
+    rampInMins = mixer.rampInMins;
+    const el = document.getElementById('rampin-mins');
+    if (el) el.value = rampInMins;
   }
 
   // Tone ADSR
@@ -3848,6 +3932,39 @@ function exportSeq() {
   a.download = (seqName || 'liminal-program') + '.json';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+async function _compressToBase64(str) {
+  const bytes  = new TextEncoder().encode(str);
+  const stream = new CompressionStream('deflate-raw');
+  const writer = stream.writable.getWriter();
+  writer.write(bytes);
+  writer.close();
+  const buf = await new Response(stream.readable).arrayBuffer();
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+
+async function _decompressFromBase64(b64) {
+  const bytes  = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const stream = new DecompressionStream('deflate-raw');
+  const writer = stream.writable.getWriter();
+  writer.write(bytes);
+  writer.close();
+  const buf = await new Response(stream.readable).arrayBuffer();
+  return new TextDecoder().decode(buf);
+}
+
+async function shareSeqUrl() {
+  const btn = document.getElementById('seq-share-btn');
+  try {
+    const data    = { name: seqName || 'Untitled', version: 2, steps: seqSteps, mixer: captureMixerState() };
+    const encoded = await _compressToBase64(JSON.stringify(data));
+    const url     = location.href.split('?')[0] + '?data=' + encoded;
+    await navigator.clipboard.writeText(url);
+    if (btn) { btn.textContent = '✓ Copied'; setTimeout(() => { btn.textContent = '⧉ Link'; }, 2000); }
+  } catch(e) {
+    if (btn) { btn.textContent = '✗ Error'; setTimeout(() => { btn.textContent = '⧉ Link'; }, 2000); }
+  }
 }
 
 function importSeqTrigger() {
@@ -4150,14 +4267,22 @@ function _releaseWakeLock() {
 // Load persisted user programs
 initUserPrograms();
 
-// Auto-load sequence from ?seq=<url> query parameter
+// Auto-load sequence from ?seq=<url> or ?data=<base64> query parameter
 (function checkSeqParam() {
-  const seqUrl = new URLSearchParams(window.location.search).get('seq');
-  if (!seqUrl) return;
-  fetchSeqFromUrl(seqUrl, { silent: false }).then(() => {
-    // Expand the sequencer so the loaded program is visible
-    if (!seqEnabled) toggleSeq();
-  }).catch(() => {});
+  const params  = new URLSearchParams(window.location.search);
+  const seqUrl  = params.get('seq');
+  const seqData = params.get('data');
+
+  if (seqData) {
+    _decompressFromBase64(seqData).then(json => {
+      loadProgram(JSON.parse(json));
+      if (!seqEnabled) toggleSeq();
+    }).catch(() => console.warn('Liminal: failed to decode ?data= param'));
+  } else if (seqUrl) {
+    fetchSeqFromUrl(seqUrl, { silent: false }).then(() => {
+      if (!seqEnabled) toggleSeq();
+    }).catch(() => {});
+  }
 })();
 
 </script>
