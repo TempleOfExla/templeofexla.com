@@ -1326,6 +1326,49 @@ input[type=range]::-moz-range-thumb {
   margin: 2px auto;
 }
 .tone-tile-custom-hz:focus { outline: none; border-bottom-color: var(--cyan); }
+
+/* ── PER-STEP CHANNEL ENABLE ── */
+.step-ch-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px 6px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.step-ch-label {
+  font-size: 8px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--dim);
+  min-width: 16px;
+  margin-right: 2px;
+}
+
+.step-ch-btn {
+  font-family: var(--mono);
+  font-size: 9px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  border-radius: 3px;
+  padding: 2px 5px;
+  cursor: pointer;
+  letter-spacing: .05em;
+  transition: border-color .12s, color .12s;
+}
+
+.step-ch-btn:hover { border-color: var(--border2); color: var(--muted); }
+
+.step-ch-btn.step-ch-on {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.step-ch-btn.step-ch-off {
+  opacity: 0.45;
+}
 </style>
 </head>
 <body>
@@ -1488,11 +1531,17 @@ input[type=range]::-moz-range-thumb {
   <!-- Sacred Frequency Palette -->
   <p class="section-label" style="margin-bottom:8px">Sacred Frequencies</p>
   <div class="adsr-row">
-    <span class="adsr-label">Envelope</span>
+    <select class="layer-select" id="adsr-preset" onchange="applyAdsrPreset(this.value)">
+      <option value="swell">Swell</option>
+      <option value="bell">Bell</option>
+      <option value="pad">Pad</option>
+      <option value="pluck">Pluck</option>
+      <option value="drone">Drone</option>
+    </select>
     <div class="adsr-field">
       <span class="layer-slider-label">atk</span>
       <input type="number" class="iso-num-input adsr-input" id="adsr-attack"
-        value="4" min="0.1" max="15" step="0.5"
+        value="4" min="0.005" max="15" step="0.5"
         oninput="updateToneAttack(this.value)"
         onblur="this.value=TONE_ADSR.attack"
         onkeydown="if(event.key==='Enter')this.blur()">
@@ -1824,6 +1873,14 @@ const DRIFT_DEPTH = 8;     // ± Hz
 const toneAuto = {};
 const TONE_ADSR = { attack: 4, decay: 0.5, sustain: 0.75, hold: 2, release: 6 };
 
+const ADSR_PRESETS = {
+  swell:  { attack: 4,     decay: 0.5,  sustain: 0.75, hold: 2,  release: 6   },
+  bell:   { attack: 0.01,  decay: 1.5,  sustain: 0.15, hold: 0,  release: 5   },
+  pad:    { attack: 6,     decay: 0.5,  sustain: 0.8,  hold: 4,  release: 8   },
+  pluck:  { attack: 0.005, decay: 0.4,  sustain: 0,    hold: 0,  release: 0.3 },
+  drone:  { attack: 8,     decay: 0.2,  sustain: 0.95, hold: 10, release: 10  },
+};
+
 // Track oscillators scheduled by fireToneAt so they can be cancelled on stop/disable
 let _scheduledToneOscs = [];
 
@@ -1846,10 +1903,10 @@ const SACRED_FREQS = [
   { hz: 396,  name: 'Liberation', color: '#cc3300', chakra: 'Root',       desc: 'Release fear & guilt' },
   { hz: 417,  name: 'Change',     color: '#c07000', chakra: 'Sacral',     desc: 'Transmute situations' },
   { hz: 432,  name: 'Cosmos',     color: '#a89900', chakra: '—',          desc: 'Universal harmony' },
-  { hz: 528,  name: 'Miracle',    color: '#008844', chakra: 'Heart',      desc: 'DNA repair, Love' },
-  { hz: 639,  name: 'Connect',    color: '#009988', chakra: 'Throat',     desc: 'Relationships' },
-  { hz: 741,  name: 'Awaken',     color: '#3355bb', chakra: 'Third Eye',  desc: 'Intuition, expression' },
-  { hz: 852,  name: 'Return',     color: '#552299', chakra: 'Third Eye+', desc: 'Spiritual order' },
+  { hz: 528,  name: 'Miracle',    color: '#008844', chakra: 'Solar Plexus', desc: 'DNA repair, Love' },
+  { hz: 639,  name: 'Connect',    color: '#009988', chakra: 'Heart',        desc: 'Relationships' },
+  { hz: 741,  name: 'Awaken',     color: '#3355bb', chakra: 'Throat',       desc: 'Intuition, expression' },
+  { hz: 852,  name: 'Return',     color: '#552299', chakra: 'Third Eye',    desc: 'Spiritual order' },
   { hz: 963,  name: 'Divine',     color: '#7711bb', chakra: 'Crown',      desc: 'Unity consciousness' },
   { hz: null, name: 'Custom',    color: '#4a4a6e', chakra: '—',          desc: 'User-defined frequency', custom: true },
 ];
@@ -1861,6 +1918,7 @@ let seqLoop              = false;
 let _seqPrevSessionDur   = 0;
 let _seqCurrentStep      = -1;
 let _seqSavedChVols      = null; // channel vols saved at sequence start, restored on stop
+let _seqSavedChEnabled   = null; // channel enabled states saved at sequence start, restored on stop
 let seqSteps        = [
   { beat: 10, carrier: 432, holdSecs: 300, rampSecs:   0, toneCues: [] },
   { beat:  7, carrier: 396, holdSecs: 300, rampSecs: 120, toneCues: [] },
@@ -2734,8 +2792,14 @@ function setWave(w) {
 }
 
 function applyPreset(name) {
-  // Clicking a frequency preset means plain-audio mode — collapse sequencer if open
+  // Clicking a frequency preset means plain-audio mode — stop sequencer if running
   if (seqEnabled) {
+    if (isPlaying) {
+      stopSequence();               // stops tick, cancels tones, calls stopAudio() w/ fade
+      clearTimeout(fadeOutTimeout); // cancel that fade — we're restarting immediately
+      fadeOutTimeout = null;
+      if (audioCtx) _hardStop();   // silence now
+    }
     seqEnabled = false;
     document.getElementById('seq-panel').style.display = 'none';
     const tb = document.getElementById('seq-toggle');
@@ -2748,9 +2812,9 @@ function applyPreset(name) {
   beatFreq    = p.beat;
   carrierFreq = p.carrier;
 
-  document.getElementById('sl-beat').value    = beatFreq;
-  document.getElementById('sl-carrier').value = carrierFreq;
-  document.getElementById('val-beat').value          = beatFreq.toFixed(1);
+  document.getElementById('sl-beat').value     = beatFreq;
+  document.getElementById('sl-carrier').value  = carrierFreq;
+  document.getElementById('val-beat').value    = beatFreq.toFixed(1);
   document.getElementById('val-carrier').value = carrierFreq;
 
   document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
@@ -2760,7 +2824,7 @@ function applyPreset(name) {
   updateSliderFill('sl-carrier', carrierFreq, 80,  500);
 
   _updateBeatPulse();
-  if (isPlaying) updateBinauralFreqs();
+  if (isPlaying) startAudio();  // restart in plain mode with new frequencies
   updateInfoBar();
 }
 
@@ -2973,6 +3037,18 @@ function updateToneRelease(v) {
   TONE_ADSR.release = Math.max(0.1, parseFloat(v) || 6);
   const el = document.getElementById('adsr-release');
   if (el) el.value = TONE_ADSR.release;
+}
+
+function applyAdsrPreset(name) {
+  const p = ADSR_PRESETS[name];
+  if (!p) return;
+  Object.assign(TONE_ADSR, p);
+  const aEl = document.getElementById('adsr-attack');
+  const hEl = document.getElementById('adsr-hold');
+  const rEl = document.getElementById('adsr-release');
+  if (aEl) aEl.value = TONE_ADSR.attack;
+  if (hEl) hEl.value = TONE_ADSR.hold;
+  if (rEl) rEl.value = TONE_ADSR.release;
 }
 
 function renderTonePalette() {
@@ -3204,6 +3280,22 @@ function removeToneCue(stepIdx, cueIdx) {
   renderSeqSteps();
 }
 
+function cycleStepChannelEnabled(stepIdx, ch) {
+  if (!seqSteps[stepIdx].channelEnabled) seqSteps[stepIdx].channelEnabled = {};
+  const current = seqSteps[stepIdx].channelEnabled[ch];
+  if (current === undefined) {
+    seqSteps[stepIdx].channelEnabled[ch] = true;
+  } else if (current === true) {
+    seqSteps[stepIdx].channelEnabled[ch] = false;
+  } else {
+    delete seqSteps[stepIdx].channelEnabled[ch];
+    if (Object.keys(seqSteps[stepIdx].channelEnabled).length === 0) {
+      delete seqSteps[stepIdx].channelEnabled;
+    }
+  }
+  renderSeqSteps();
+}
+
 function renderSeqSteps() {
   const container = document.getElementById('seq-steps');
   container.innerHTML = '';
@@ -3355,6 +3447,27 @@ function renderSeqSteps() {
     cueArea.appendChild(addBtn);
     cueArea.appendChild(picker);
     wrapper.appendChild(cueArea);
+
+    // Per-step channel enable/disable row
+    const chRow = document.createElement('div');
+    chRow.className = 'step-ch-row';
+    const chLabel = document.createElement('span');
+    chLabel.className = 'step-ch-label';
+    chLabel.textContent = 'ch:';
+    chRow.appendChild(chLabel);
+    const CH_KEYS  = ['binaural','noise','ocean','ambient','iso','tones'];
+    const CH_SHORT = ['Bin','Noi','Oce','Amb','Iso','Ton'];
+    CH_KEYS.forEach((ch, ci) => {
+      const state = step.channelEnabled ? step.channelEnabled[ch] : undefined;
+      const btn = document.createElement('button');
+      btn.className = 'step-ch-btn' + (state === true ? ' step-ch-on' : state === false ? ' step-ch-off' : '');
+      btn.textContent = (state === true ? '●' : state === false ? '○' : '—') + ' ' + CH_SHORT[ci];
+      btn.title = ch + ': ' + (state === undefined ? 'no change' : state ? 'enable' : 'disable') + ' · click to cycle';
+      btn.onclick = () => cycleStepChannelEnabled(i, ch);
+      chRow.appendChild(btn);
+    });
+    wrapper.appendChild(chRow);
+
     container.appendChild(wrapper);
   });
 }
@@ -3375,9 +3488,13 @@ function startSequence() {
   initAudio();
   if (audioCtx.state === 'suspended') audioCtx.resume();
 
-  // Save channel volumes so we can restore them when the sequence ends
+  // Save channel volumes and enabled states so we can restore them when the sequence ends
   _seqSavedChVols = {};
-  ['binaural','noise','ocean','ambient','iso','tones'].forEach(ch => { _seqSavedChVols[ch] = CH[ch].vol; });
+  _seqSavedChEnabled = {};
+  ['binaural','noise','ocean','ambient','iso','tones'].forEach(ch => {
+    _seqSavedChVols[ch]    = CH[ch].vol;
+    _seqSavedChEnabled[ch] = CH[ch].enabled;
+  });
 
   const first = seqSteps[0];
   beatFreq    = first.beat;
@@ -3448,6 +3565,17 @@ function stopSequence() {
     _seqSavedChVols = null;
   }
 
+  // Restore channel enabled states that tickSequence may have changed via channelEnabled
+  if (_seqSavedChEnabled) {
+    ['binaural','noise','ocean','ambient','iso','tones'].forEach(ch => {
+      CH[ch].enabled = _seqSavedChEnabled[ch];
+      const btn = document.getElementById('ch-toggle-' + ch);
+      if (btn) { btn.classList.toggle('active', CH[ch].enabled); btn.textContent = CH[ch].enabled ? '●' : '○'; }
+    });
+    document.getElementById('iso-duty-row').style.display = CH.iso.enabled ? 'grid' : 'none';
+    _seqSavedChEnabled = null;
+  }
+
   updateSeqRunBtn(false);
   stopAudio();
 }
@@ -3489,7 +3617,7 @@ function tickSequence() {
   }
   document.getElementById('seq-progress-label').textContent = stepLabel;
 
-  // Apply channelVols on step entry
+  // Apply channelVols and channelEnabled on step entry
   if (currentStepIdx !== _seqCurrentStep) {
     _seqCurrentStep = currentStepIdx;
     const vols = seqSteps[currentStepIdx].channelVols;
@@ -3505,6 +3633,13 @@ function tickSequence() {
         const val = document.getElementById('val-ch-' + ch + '-vol');
         if (sl)  sl.value = v;
         if (val) val.textContent = Math.round(v * 100) + '%';
+      }
+    }
+    const enables = seqSteps[currentStepIdx].channelEnabled;
+    if (enables) {
+      for (const [ch, enabled] of Object.entries(enables)) {
+        if (!CH[ch] || CH[ch].enabled === enabled) continue;
+        toggleChannel(ch);
       }
     }
   }
@@ -3546,6 +3681,7 @@ function captureMixerState() {
     isoDuty,
     driftEnabled,
     reverbEnabled,
+    toneAdsr:  { attack: TONE_ADSR.attack, decay: TONE_ADSR.decay, sustain: TONE_ADSR.sustain, hold: TONE_ADSR.hold, release: TONE_ADSR.release },
     binaural: { enabled: CH.binaural.enabled, vol: CH.binaural.vol },
     noise:    { enabled: CH.noise.enabled,    vol: CH.noise.vol,    pan: CH.noise.pan,  type: CH.noise.type },
     ocean:    { enabled: CH.ocean.enabled,    vol: CH.ocean.vol,    pan: CH.ocean.pan },
@@ -3604,6 +3740,20 @@ function applyMixerState(mixer) {
     reverbEnabled = mixer.reverbEnabled;
     const cb = document.getElementById('opt-reverb');
     if (cb) cb.checked = reverbEnabled;
+  }
+
+  // Tone ADSR
+  if (mixer.toneAdsr) {
+    Object.assign(TONE_ADSR, mixer.toneAdsr);
+    const aEl = document.getElementById('adsr-attack');
+    const hEl = document.getElementById('adsr-hold');
+    const rEl = document.getElementById('adsr-release');
+    if (aEl) aEl.value = TONE_ADSR.attack;
+    if (hEl) hEl.value = TONE_ADSR.hold;
+    if (rEl) rEl.value = TONE_ADSR.release;
+    // Reset preset select — restored ADSR may not match any named preset
+    const pSel = document.getElementById('adsr-preset');
+    if (pSel) pSel.value = 'swell';
   }
 
   // Channels
@@ -3773,7 +3923,8 @@ function loadProgram(prog) {
     carrier:     parseFloat(s.carrier) || 432,
     holdSecs:    parseInt(s.holdSecs)  || 300,
     rampSecs:    parseInt(s.rampSecs)  || 0,
-    channelVols: s.channelVols || undefined,
+    channelVols:    s.channelVols || undefined,
+    channelEnabled: (s.channelEnabled && typeof s.channelEnabled === 'object') ? Object.assign({}, s.channelEnabled) : undefined,
     toneCues:    Array.isArray(s.toneCues)
       ? s.toneCues.map(c => {
           const cue = { hz: c.hz, atSecs: c.atSecs || 0 };
