@@ -3959,7 +3959,7 @@ async function shareSeqUrl() {
   try {
     const data    = { name: seqName || 'Untitled', version: 2, steps: seqSteps, mixer: captureMixerState() };
     const encoded = await _compressToBase64(JSON.stringify(data));
-    const url     = location.href.split('?')[0] + '?data=' + encoded;
+    const url     = location.href.split('?')[0] + '?data=' + encodeURIComponent(encoded);
     await navigator.clipboard.writeText(url);
     if (btn) { btn.textContent = '✓ Copied'; setTimeout(() => { btn.textContent = '⧉ Link'; }, 2000); }
   } catch(e) {
