@@ -3951,8 +3951,23 @@ function applyMixerState(mixer) {
 
 // ── Program I/O ───────────────────────────────────────
 
+// Returns a deep copy of seqSteps with the current mixer channel volumes baked
+// into step 0's channelVols, so exported/shared programs start with the user's mix.
+function _stepsWithMixerBaked() {
+  const steps = JSON.parse(JSON.stringify(seqSteps));
+  steps[0].channelVols = {
+    binaural: CH.binaural.vol,
+    noise:    CH.noise.vol,
+    ocean:    CH.ocean.vol,
+    ambient:  CH.ambient.vol,
+    iso:      CH.iso.vol,
+    tones:    CH.tones.vol,
+  };
+  return steps;
+}
+
 function exportSeq() {
-  const data = { name: seqName || 'Untitled', version: 2, steps: seqSteps, mixer: captureMixerState() };
+  const data = { name: seqName || 'Untitled', version: 2, steps: _stepsWithMixerBaked(), mixer: captureMixerState() };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
@@ -3985,7 +4000,7 @@ async function _decompressFromBase64(b64) {
 async function shareSeqUrl() {
   const btn = document.getElementById('seq-share-btn');
   try {
-    const data    = { name: seqName || 'Untitled', version: 2, steps: seqSteps, mixer: captureMixerState() };
+    const data    = { name: seqName || 'Untitled', version: 2, steps: _stepsWithMixerBaked(), mixer: captureMixerState() };
     const encoded = await _compressToBase64(JSON.stringify(data));
     const url     = location.href.split('?')[0] + '?data=' + encodeURIComponent(encoded);
     await navigator.clipboard.writeText(url);
@@ -4051,7 +4066,8 @@ function saveProgram() {
   const name = (document.getElementById('seq-name').value || '').trim() || 'Untitled';
   seqName = name;
   document.getElementById('seq-name').value = name;
-  const prog = { name, steps: JSON.parse(JSON.stringify(seqSteps)), mixer: captureMixerState() };
+
+  const prog = { name, steps: _stepsWithMixerBaked(), mixer: captureMixerState() };
   const idx = userPrograms.findIndex(p => p.name === name);
   if (idx >= 0) userPrograms[idx] = prog;
   else userPrograms.push(prog);
