@@ -3564,6 +3564,35 @@ function startSequence() {
   beatFreq    = first.beat;
   carrierFreq = first.carrier;
 
+  // Apply step 0's channelVols/channelEnabled immediately so the mixer reflects the
+  // sequence's starting state from the moment Run is pressed. Without this, the first
+  // tickSequence() call (100ms later) would apply them, making it look like the mixer
+  // is being "reset" shortly after the saved state was applied.
+  const _gainMap = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
+  if (first.channelVols) {
+    for (const [ch, vol] of Object.entries(first.channelVols)) {
+      if (!CH[ch]) continue;
+      const v = Math.max(0, Math.min(1, parseFloat(vol)));
+      CH[ch].vol = v;
+      if (_gainMap[ch]) _gainMap[ch].gain.value = v;
+      updateSliderFill('sl-ch-' + ch + '-vol', v, 0, 1);
+      const sl  = document.getElementById('sl-ch-'  + ch + '-vol');
+      const val = document.getElementById('val-ch-' + ch + '-vol');
+      if (sl)  sl.value = v;
+      if (val) val.textContent = Math.round(v * 100) + '%';
+    }
+  }
+  if (first.channelEnabled) {
+    for (const [ch, enabled] of Object.entries(first.channelEnabled)) {
+      if (!CH[ch]) continue;
+      CH[ch].enabled = enabled;
+      const btn = document.getElementById('ch-toggle-' + ch);
+      if (btn) { btn.classList.toggle('active', enabled); btn.textContent = enabled ? '●' : '○'; }
+      if (ch === 'iso') document.getElementById('iso-duty-row').style.display = enabled ? 'grid' : 'none';
+    }
+  }
+  _seqCurrentStep = 0; // Don't re-apply step 0 on the first tick
+
   if (CH.binaural.enabled) startBinaural();
   if (CH.noise.enabled)    startNoise();
   if (CH.ocean.enabled)    startOcean();
@@ -3580,7 +3609,6 @@ function startSequence() {
   sessionDurationSecs = _seqSchedule.totalSecs;
   startSessionTimer();
 
-  _seqCurrentStep = -1;
   document.getElementById('seq-progress').style.display = 'block';
   seqTickInterval = setInterval(tickSequence, 100);
   updateSeqRunBtn(true);
