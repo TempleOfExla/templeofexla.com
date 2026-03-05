@@ -4277,6 +4277,9 @@ initUserPrograms();
     _decompressFromBase64(seqData).then(json => {
       loadProgram(JSON.parse(json));
       if (!seqEnabled) toggleSeq();
+      setTimeout(() => {
+        document.getElementById('seq-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
     }).catch(() => console.warn('Liminal: failed to decode ?data= param'));
   } else if (seqUrl) {
     fetchSeqFromUrl(seqUrl, { silent: false }).then(() => {
