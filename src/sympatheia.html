@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Liminal — Brainwave Entrainment</title>
+<title>Sympatheia — Brainwave Entrainment</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -159,6 +159,16 @@ header {
   letter-spacing: .15em;
   text-shadow: 0 0 40px var(--cyan-glow), 0 0 80px rgba(0,229,204,.15);
   margin-bottom: 6px;
+}
+
+.app-greek {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--muted);
+  letter-spacing: .06em;
+  margin-bottom: 8px;
 }
 
 .app-sub {
@@ -1375,9 +1385,10 @@ input[type=range]::-moz-range-thumb {
 <div class="app">
 
   <header>
-    <h1 class="app-name">Liminal</h1>
+    <h1 class="app-name">Sympatheia</h1>
+    <p class="app-greek">συμπάθεια &middot; resonance of the whole</p>
     <p class="app-sub">Brainwave Entrainment · Multi-Layer Audio</p>
-    <button class="info-btn" onclick="toggleInfo()" title="What is Liminal?">?</button>
+    <button class="info-btn" onclick="toggleInfo()" title="What is Sympatheia?">?</button>
     <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">
       <svg id="theme-icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
@@ -1498,11 +1509,6 @@ input[type=range]::-moz-range-thumb {
       <span class="preset-name">Schumann</span>
       <span class="preset-hz">7.83 Hz</span>
       <span class="preset-desc">Earth resonance</span>
-    </button>
-    <button class="preset-btn preset-btn-session" onclick="loadChakraReset(this)">
-      <span class="preset-name">Chakra Reset</span>
-      <span class="preset-hz">21 min</span>
-      <span class="preset-desc">Full session ✦</span>
     </button>
   </div>
 
@@ -1815,9 +1821,9 @@ input[type=range]::-moz-range-thumb {
   <div class="info-modal-inner">
     <button class="info-close" onclick="toggleInfo()">×</button>
 
-    <h2 class="info-title">What is Liminal?</h2>
+    <h2 class="info-title">What is Sympatheia?</h2>
 
-    <p class="info-body">Liminal is a <strong>brainwave entrainment</strong> tool. By listening through headphones to specific audio patterns, it gently encourages your brain toward particular mental states — deep rest, meditation, creative flow, or sharp focus.</p>
+    <p class="info-body">Sympatheia is a <strong>brainwave entrainment</strong> tool. By listening through headphones to specific audio patterns, it gently encourages your brain toward particular mental states — deep rest, meditation, creative flow, or sharp focus.</p>
 
     <h3 class="info-section">How binaural beats work</h3>
     <p class="info-body">Play 200 Hz in your left ear and 210 Hz in your right, and your brain perceives the 10 Hz <em>difference</em> as a slow pulse — and gradually synchronises to it. This is called the <strong>frequency-following response</strong>. Different beat frequencies correspond to different brain states: delta for deep sleep, theta for hypnagogic meditation, alpha for calm alertness, beta for active thinking. <strong>Headphones are essential</strong> — the stereo separation between ears is what creates the effect.</p>
@@ -1834,7 +1840,327 @@ input[type=range]::-moz-range-thumb {
 </div>
 
 <script>
-'use strict';
+// ══════════════════════════════════════════════════════
+// Sympatheia — Built-in Sequencer Programs
+// ══════════════════════════════════════════════════════
+//
+// Edit this file to add, remove, or tune built-in programs and presets.
+// Concatenated before sympatheia.js at build time — no imports needed.
+//
+// Field reference: README.md § Sequencer JSON Format
+// Sacred frequencies: README.md § Sacred Frequencies Reference
+// ══════════════════════════════════════════════════════
+
+// ── Brainwave Presets ─────────────────────────────────
+// Used by the preset strip buttons (Delta, Theta, Alpha, Beta, Gamma, Schumann).
+
+const PRESETS = {
+  delta:    { beat: 2,    carrier: 120 },
+  theta:    { beat: 6,    carrier: 160 },
+  alpha:    { beat: 10,   carrier: 200 },
+  beta:     { beat: 18,   carrier: 240 },
+  gamma:    { beat: 40,   carrier: 320 },
+  schumann: { beat: 7.83, carrier: 160 },
+};
+
+
+// ── Built-in Programs ─────────────────────────────────
+// Displayed in the sequencer library under "Built-in".
+// Programs without a `mixer` key load steps only — user's current mixer is left as-is.
+// Programs with a `mixer` key restore the full mixer state via applyMixerState().
+
+const BUILT_IN_PROGRAMS = [
+
+  // ── Simple single-layer (binaural only, no mixer snapshot) ─────
+
+  { name: 'Sleep Induction',
+    desc: 'Gentle descent from alpha through theta to delta',
+    steps: [
+      { beat:10, carrier:432, holdSecs:300, rampSecs:0,   toneCues:[] },
+      { beat:6,  carrier:396, holdSecs:600, rampSecs:180, toneCues:[] },
+      { beat:2,  carrier:256, holdSecs:900, rampSecs:300, toneCues:[] },
+    ] },
+
+  { name: 'Focus Ramp',
+    desc: 'Rise from theta through alpha into active beta',
+    steps: [
+      { beat:6,  carrier:360, holdSecs:300, rampSecs:0,   toneCues:[] },
+      { beat:10, carrier:432, holdSecs:300, rampSecs:120, toneCues:[] },
+      { beat:18, carrier:480, holdSecs:600, rampSecs:180, toneCues:[] },
+    ] },
+
+  { name: 'Deep Theta',
+    desc: 'Sustained meditative depth with slow deepening',
+    steps: [
+      { beat:7, carrier:396, holdSecs:600, rampSecs:0,   toneCues:[] },
+      { beat:5, carrier:360, holdSecs:600, rampSecs:240, toneCues:[] },
+    ] },
+
+  // ── Theta / delta exploration (full mixer snapshot) ───────────
+
+  // Total: 1800 s = 30 min.
+  // Beat arc: alpha entry (9) → theta (6) → deep theta (5) → delta touch (3) → theta (5.5) → boundary hover (4).
+  // Goal: settle into the hypnagogic zone and ride the theta–delta edge without dropping fully into sleep.
+  { name: 'Hypnagogic Edge',
+    desc: '30 min · Theta–delta boundary · Hypnagogia with delta dips · Ocean + reverb',
+    mixer: {
+      masterVol: 0.35, waveType: 'sine', isoDuty: 0.5,
+      driftEnabled: true, reverbEnabled: true,
+      rampInEnabled: true, rampInDelta: 4, rampInMins: 2,
+      binaural: { enabled: true,  vol: 0.38 },
+      noise:    { enabled: true,  vol: 0.06, pan: 0,    type: 'pink' },
+      ocean:    { enabled: true,  vol: 0.82, pan: 0 },
+      ambient:  { enabled: false, vol: 0.5,  pan: 0 },
+      iso:      { enabled: false, vol: 0.4,  pan: 0,    beat: 10, carrier: 174 },
+      tones:    { enabled: true,  vol: 0.10, pan: -0.7 },
+    },
+    steps: [
+      { // Alpha entry — settle the body before descending
+        beat: 9.0, carrier: 174, rampSecs:  0, holdSecs: 180,
+        channelVols: { binaural: 0.38, noise: 0.06, ocean: 0.82, tones: 0.10 },
+        toneCues: [
+          { hz: 111, atSecs: 5, adsr: { attack: 6, hold: 8, release: 12 } }, // opening Om
+        ],
+      },
+      { // Theta descent
+        beat: 6.0, carrier: 160, rampSecs: 120, holdSecs: 180,
+        toneCues: [
+          { hz: 174, atSecs: 60 }, // Foundation — arriving in theta
+        ],
+      },
+      { // Deep theta — body fully relaxed, mind beginning to loosen
+        beat: 5.0, carrier: 148, rampSecs:  90, holdSecs: 240,
+        toneCues: [],
+      },
+      { // Delta touch — the edge
+        beat: 3.0, carrier: 130, rampSecs:  90, holdSecs: 240,
+        toneCues: [
+          { hz: 285, atSecs: 60, adsr: { attack: 6, hold: 10, release: 10 } }, // Quantum — tissue / threshold
+        ],
+      },
+      { // Theta recovery — pull back from delta, maintain hypnagogic edge
+        beat: 5.5, carrier: 148, rampSecs:  90, holdSecs: 180,
+        toneCues: [],
+      },
+      { // Boundary hover — settle here and let the mind wander
+        beat: 4.0, carrier: 136, rampSecs:  60, holdSecs: 330,
+        toneCues: [
+          { hz: 396, atSecs: 60 }, // Liberation — release into the edge
+        ],
+      },
+    ],
+  },
+
+  // Total: 5400 s = 90 min.
+  // Two full descent-and-return cycles, going deeper on the second (1.5 Hz).
+  // The first cycle establishes familiarity with the threshold; the second goes further.
+  { name: 'Sleep Threshold',
+    desc: '90 min · Theta–delta oscillation · Two descent cycles · Long-form edge-of-sleep',
+    mixer: {
+      masterVol: 0.38, waveType: 'sine', isoDuty: 0.5,
+      driftEnabled: true, reverbEnabled: true,
+      rampInEnabled: true, rampInDelta: 3, rampInMins: 3,
+      binaural: { enabled: true,  vol: 0.35 },
+      noise:    { enabled: true,  vol: 0.05, pan: 0,    type: 'pink' },
+      ocean:    { enabled: true,  vol: 0.90, pan: 0 },
+      ambient:  { enabled: false, vol: 0.5,  pan: 0 },
+      iso:      { enabled: false, vol: 0.4,  pan: 0,    beat: 10, carrier: 174 },
+      tones:    { enabled: true,  vol: 0.08, pan: -0.8 },
+    },
+    steps: [
+      { // Alpha entry — long enough to fully release physical tension
+        beat: 9.0, carrier: 174, rampSecs:   0, holdSecs: 300,
+        channelVols: { binaural: 0.35, noise: 0.05, ocean: 0.90, tones: 0.08 },
+        toneCues: [
+          { hz: 111, atSecs: 10, adsr: { attack: 8, hold: 10, release: 15 } }, // opening Om
+        ],
+      },
+      { // Theta descent — cycle 1
+        beat: 5.5, carrier: 160, rampSecs: 180, holdSecs: 420,
+        toneCues: [
+          { hz: 174, atSecs: 90 }, // Foundation — entering theta body
+        ],
+      },
+      { // Delta approach — first brush with the boundary
+        beat: 3.5, carrier: 140, rampSecs: 150, holdSecs: 450,
+        toneCues: [
+          { hz: 285, atSecs: 90 }, // Quantum — approaching threshold
+        ],
+      },
+      { // Deep delta — cycle 1
+        beat: 2.0, carrier: 124, rampSecs: 120, holdSecs: 360,
+        toneCues: [
+          { hz: 285, atSecs: 120, adsr: { attack: 8, hold: 15, release: 12 } }, // deep threshold tone
+        ],
+      },
+      { // Theta recovery — cycle 1 return
+        beat: 5.0, carrier: 150, rampSecs: 150, holdSecs: 450,
+        toneCues: [],
+      },
+      { // Theta consolidation — brief hold before second descent
+        beat: 6.0, carrier: 160, rampSecs:  90, holdSecs: 330,
+        toneCues: [
+          { hz: 396, atSecs: 60 }, // Liberation — release before going deeper
+        ],
+      },
+      { // Second descent — deeper target this time
+        beat: 2.5, carrier: 130, rampSecs: 180, holdSecs: 420,
+        toneCues: [],
+      },
+      { // Deepest delta — cortical slow oscillation territory
+        beat: 1.5, carrier: 112, rampSecs: 120, holdSecs: 480,
+        toneCues: [
+          { hz: 174, atSecs: 120, adsr: { attack: 10, hold: 20, release: 15 } }, // Foundation — very deep
+        ],
+      },
+      { // Theta recovery — cycle 2 return
+        beat: 5.5, carrier: 150, rampSecs: 180, holdSecs: 420,
+        toneCues: [],
+      },
+      { // Gentle close — rise toward alpha, close with Om
+        beat: 7.0, carrier: 160, rampSecs: 120, holdSecs: 480,
+        toneCues: [
+          { hz: 111, atSecs: 240, adsr: { attack: 8, hold: 20, release: 30 } }, // closing Om
+        ],
+      },
+    ],
+  },
+
+  // ── Focus 10 (full mixer snapshot) ────────────────────────────
+
+  // Total: 1800 s = 30 min.
+  // Monroe Institute's Focus 10: Mind Awake / Body Asleep.
+  // Systematic staged descent: beta → alpha → alpha/theta border → Schumann resonance hold.
+  // Binaural is kept slightly louder than usual to maintain mental thread while body sleeps.
+  { name: 'Focus 10',
+    desc: '30 min · Mind awake, body asleep · Alpha–theta border · Monroe Institute method',
+    mixer: {
+      masterVol: 0.30, waveType: 'sine', isoDuty: 0.5,
+      driftEnabled: true, reverbEnabled: true,
+      rampInEnabled: true, rampInDelta: 5, rampInMins: 2,
+      binaural: { enabled: true,  vol: 0.45 }, // higher — mental thread needs the beat
+      noise:    { enabled: true,  vol: 0.08, pan: 0,    type: 'pink' },
+      ocean:    { enabled: true,  vol: 0.72, pan: 0 },
+      ambient:  { enabled: false, vol: 0.5,  pan: 0 },
+      iso:      { enabled: false, vol: 0.4,  pan: 0,    beat: 10, carrier: 174 },
+      tones:    { enabled: true,  vol: 0.12, pan: -0.5 },
+    },
+    steps: [
+      { // Physical relaxation — alpha grounding
+        beat: 10.0, carrier: 200, rampSecs:   0, holdSecs: 180,
+        channelVols: { binaural: 0.45, noise: 0.08, ocean: 0.72, tones: 0.12 },
+        toneCues: [
+          { hz: 111, atSecs: 10, adsr: { attack: 5, hold: 5, release: 8 } }, // Om — settle in
+        ],
+      },
+      { // Alpha bridge — body releasing, mind staying clear
+        beat:  8.0, carrier: 180, rampSecs: 120, holdSecs: 180,
+        toneCues: [
+          { hz: 432, atSecs: 60 }, // Cosmos — arriving at the border
+        ],
+      },
+      { // Alpha–theta edge — first hint of the paradox
+        beat:  7.0, carrier: 168, rampSecs:  90, holdSecs: 300,
+        toneCues: [],
+      },
+      { // Focus 10 state — Schumann resonance as anchor
+        beat: 7.83, carrier: 160, rampSecs:  60, holdSecs: 420,
+        toneCues: [
+          { hz: 285, atSecs: 60, adsr: { attack: 5, hold: 8, release: 10 } }, // Quantum — mind/body integration
+        ],
+      },
+      { // Deepen and consolidate — stay in Focus 10, go a little further
+        beat:  7.0, carrier: 156, rampSecs:  90, holdSecs: 360,
+        toneCues: [
+          { hz: 528, atSecs: 120 }, // Miracle — DNA repair / integration
+        ],
+      },
+    ],
+  },
+
+  // ── Multi-layer (full mixer snapshot) ─────────────────────────
+
+  { name: 'Solfeggio Journey',
+    desc: 'Alpha–theta descent with Solfeggio tone cues at each stage.',
+    mixer: {
+      masterVol: 0.25, waveType: 'sine', isoDuty: 0.5,
+      binaural: { enabled: true,  vol: 0.35 },
+      noise:    { enabled: true,  vol: 0.2,  pan: 0, type: 'pink' },
+      ocean:    { enabled: false, vol: 0.65, pan: 0 },
+      iso:      { enabled: false, vol: 0.4,  pan: 0, beat: 10, carrier: 174 },
+      tones:    { enabled: true,  vol: 0.45, pan: 0 },
+    },
+    steps: [
+      { beat:10, carrier:432, holdSecs:300, rampSecs:0,
+        toneCues:[ { hz:432, atSecs:5 }, { hz:417, atSecs:150 } ] },
+      { beat:7,  carrier:396, holdSecs:360, rampSecs:120,
+        toneCues:[ { hz:528, atSecs:10 }, { hz:396, atSecs:180 } ] },
+      { beat:4,  carrier:285, holdSecs:360, rampSecs:180,
+        toneCues:[ { hz:285, atSecs:10 }, { hz:174, atSecs:200 } ] },
+    ] },
+
+  // featured: true  →  rendered as a button in the preset strip.
+  // featuredDesc     →  short tagline shown on the button (optional).
+  { name: 'Chakra Reset',
+    featured: true, featuredDesc: 'Full session',
+    desc: '21 min · Seven chakras · alpha→theta→alpha arc · Ocean · Solfeggio tone cues',
+    mixer: {
+      masterVol: 0.38, waveType: 'sine', isoDuty: 0.5,
+      driftEnabled: true, reverbEnabled: true,
+      rampInEnabled: true, rampInDelta: 6, rampInMins: 2,
+      binaural: { enabled: true,  vol: 0.38 },
+      noise:    { enabled: true,  vol: 0.05, pan: 0,     type: 'pink' },
+      ocean:    { enabled: true,  vol: 0.87, pan: 0 },
+      ambient:  { enabled: false, vol: 0.5,  pan: 0 },
+      iso:      { enabled: false, vol: 0.4,  pan: 0,     beat: 10, carrier: 174 },
+      tones:    { enabled: true,  vol: 0.09, pan: -0.95 },
+    },
+    steps: [
+      { // 1 — Root — Muladhara — 396 Hz Liberation
+        beat: 10.0, carrier: 174, rampSecs: 0, holdSecs: 180,
+        channelVols: { binaural: 0.38, noise: 0.05, ocean: 0.87, tones: 0.09 },
+        toneCues: [
+          { hz: 111, atSecs:  5, adsr: { attack: 6, hold: 8,  release: 12 } }, // opening Om — grounding entry
+          { hz: 396, atSecs: 70 },                                               // Root tone
+        ],
+      },
+      { // 2 — Sacral — Svadhisthana — 417 Hz Change
+        beat: 8.5, carrier: 196, rampSecs: 30, holdSecs: 150,
+        toneCues: [{ hz: 417, atSecs: 35 }],
+      },
+      { // 3 — Solar Plexus — Manipura — 528 Hz Miracle
+        beat: 7.83, carrier: 210, rampSecs: 30, holdSecs: 150,
+        toneCues: [{ hz: 528, atSecs: 35 }],
+      },
+      { // 4 — Heart — Anahata — 639 Hz Connect (deepest point of the arc)
+        beat: 6.5, carrier: 228, rampSecs: 30, holdSecs: 150,
+        channelVols: { ocean: 0.95 }, // ocean swells at the heart
+        toneCues: [
+          { hz: 639, atSecs: 35, adsr: { attack: 5, hold: 8, release: 10 } }, // longest bloom at the deepest point
+          { hz: 432, atSecs: 95, adsr: { attack: 5, hold: 10, release: 10 } }, // Cosmos — universal harmony
+        ],
+      },
+      { // 5 — Throat — Vishuddha — 741 Hz Awaken
+        beat: 7.83, carrier: 210, rampSecs: 30, holdSecs: 150,
+        toneCues: [{ hz: 741, atSecs: 35 }],
+      },
+      { // 6 — Third Eye — Ajna — 852 Hz Return
+        beat: 8.5, carrier: 196, rampSecs: 30, holdSecs: 150,
+        toneCues: [{ hz: 852, atSecs: 35 }],
+      },
+      { // 7 — Crown — Sahasrara — 963 Hz Divine
+        beat: 10.5, carrier: 174, rampSecs: 30, holdSecs: 150,
+        channelVols: { ocean: 0.72 }, // soften for the close
+        toneCues: [
+          { hz: 963, atSecs:  35, adsr: { attack: 10, hold: 30, release: 20 } }, // crown opening
+          { hz: 111, atSecs: 115, adsr: { attack:  8, hold: 20, release: 30 } }, // closing Om — mirrors the opening
+        ],
+      },
+    ],
+  },
+
+];
+
 'use strict';
 
 // ══════════════════════════════════════════════════════
@@ -1879,7 +2205,8 @@ let ambientChGain = null, ambientPan = null;
 let ambientFileSource = null, ambientFileBuffer = null;
 
 // Iso nodes
-let isoOsc = null, isoGain = null, isoLfoInterval = null;
+let isoOsc = null, isoGain = null, isoSchedulerInterval = null;
+let isoNextPulseTime = 0;
 let isoChGain = null, isoPan = null;
 
 // Tones nodes
@@ -1915,6 +2242,9 @@ const ADSR_PRESETS = {
 
 // Track oscillators scheduled by fireToneAt so they can be cancelled on stop/disable
 let _scheduledToneOscs = [];
+// Count of manually-fired tones still within their envelope (used to re-suspend
+// the AudioContext after all tones finish when no session is playing)
+let _activeToneCount = 0;
 
 // Fade / session timer
 const FADE_IN_SECS          = 4;
@@ -1962,164 +2292,6 @@ let seqName         = '';
 let userPrograms    = [];
 let seqLibOpen      = false;
 
-// 7 chakras × 180 s = 1260 s = 21 minutes
-// Beat arc: mid-alpha (10) → Schumann (7.83) → theta (6.5) → Schumann → mid-alpha
-// Carrier arc: 174 Hz (Foundation) → 228 Hz → 174 Hz (circular)
-const CHAKRA_RESET_PROGRAM = [
-  { // 1 — Root — 396 Hz "Liberation" — Muladhara
-    beat: 10.0, carrier: 174, rampSecs: 0, holdSecs: 180,
-    channelVols: { binaural: 0.8, ocean: 0.4, noise: 0, tones: 0.7 },
-    toneCues: [
-      { hz: 111, atSecs:  5, adsr: { attack: 6, hold: 8,  release: 12 } }, // opening Om
-      { hz: 396, atSecs: 70 },                                               // Root tone
-    ],
-  },
-  { // 2 — Sacral — 417 Hz "Change" — Svadhisthana
-    beat: 8.5, carrier: 196, rampSecs: 30, holdSecs: 150,
-    toneCues: [{ hz: 417, atSecs: 35 }],
-  },
-  { // 3 — Solar Plexus — 528 Hz "Miracle" — Manipura
-    beat: 7.83, carrier: 210, rampSecs: 30, holdSecs: 150,
-    toneCues: [{ hz: 528, atSecs: 35 }],
-  },
-  { // 4 — Heart — 639 Hz "Connect" — Anahata (deepest point)
-    beat: 6.5, carrier: 228, rampSecs: 30, holdSecs: 150,
-    channelVols: { ocean: 0.55 }, // ocean swells at the heart
-    toneCues: [
-      { hz: 639, atSecs: 35 },
-      { hz: 432, atSecs: 95, adsr: { attack: 5, hold: 10, release: 10 } }, // Cosmos
-    ],
-  },
-  { // 5 — Throat — 741 Hz "Awaken" — Vishuddha
-    beat: 7.83, carrier: 210, rampSecs: 30, holdSecs: 150,
-    toneCues: [{ hz: 741, atSecs: 35 }],
-  },
-  { // 6 — Third Eye — 852 Hz "Return" — Ajna
-    beat: 8.5, carrier: 196, rampSecs: 30, holdSecs: 150,
-    toneCues: [{ hz: 852, atSecs: 35 }],
-  },
-  { // 7 — Crown — 963 Hz "Divine" — Sahasrara
-    beat: 10.5, carrier: 174, rampSecs: 30, holdSecs: 150,
-    channelVols: { ocean: 0.35 }, // soften for the close
-    toneCues: [
-      { hz: 963, atSecs:  35, adsr: { attack: 10, hold: 30, release: 20 } }, // crown opening
-      { hz: 111, atSecs: 115, adsr: { attack:  8, hold: 20, release: 30 } }, // closing Om
-    ],
-  },
-];
-
-// Built-in Programs
-const BUILT_IN_PROGRAMS = [
-  { name: 'Alpha Hold',      desc: '30 min of sustained relaxed focus',
-    steps: [{ beat:10, carrier:432, holdSecs:1800, rampSecs:0, toneCues:[] }] },
-  { name: 'Alpha → Theta',   desc: 'Ease from focused relaxation into meditation',
-    steps: [{ beat:10, carrier:432, holdSecs:300, rampSecs:0,   toneCues:[] },
-            { beat:7,  carrier:396, holdSecs:300, rampSecs:120, toneCues:[] }] },
-  { name: 'Sleep Induction', desc: 'Gentle descent from alpha through theta to delta',
-    steps: [{ beat:10, carrier:432, holdSecs:300, rampSecs:0,   toneCues:[] },
-            { beat:6,  carrier:396, holdSecs:600, rampSecs:180, toneCues:[] },
-            { beat:2,  carrier:256, holdSecs:900, rampSecs:300, toneCues:[] }] },
-  { name: 'Focus Ramp',      desc: 'Rise from theta through alpha into active beta',
-    steps: [{ beat:6,  carrier:360, holdSecs:300, rampSecs:0,   toneCues:[] },
-            { beat:10, carrier:432, holdSecs:300, rampSecs:120, toneCues:[] },
-            { beat:18, carrier:480, holdSecs:600, rampSecs:180, toneCues:[] }] },
-  { name: 'Deep Theta',      desc: 'Sustained meditative depth with slow deepening',
-    steps: [{ beat:7,  carrier:396, holdSecs:600, rampSecs:0,   toneCues:[] },
-            { beat:5,  carrier:360, holdSecs:600, rampSecs:240, toneCues:[] }] },
-  { name: 'Anxiety Reset',   desc: 'Acknowledge stress then gradually wind down to calm',
-    steps: [{ beat:16, carrier:440, holdSecs:120, rampSecs:0,   toneCues:[] },
-            { beat:10, carrier:432, holdSecs:600, rampSecs:240, toneCues:[] },
-            { beat:7,  carrier:396, holdSecs:600, rampSecs:240, toneCues:[] }] },
-  { name: 'Gamma Burst',     desc: 'Alpha warm-up then gamma for peak cognitive focus',
-    steps: [{ beat:10, carrier:432, holdSecs:120, rampSecs:0,   toneCues:[] },
-            { beat:40, carrier:320, holdSecs:480, rampSecs:240, toneCues:[] }] },
-
-  // ── Multi-layer demos ───────────────────────────────
-  { name: 'Solfeggio Journey',
-    desc: 'Alpha–theta descent with Solfeggio tone cues at each stage.',
-    mixer: {
-      masterVol: 0.25, waveType: 'sine', isoDuty: 0.5,
-      binaural: { enabled: true,  vol: 0.35 },
-      noise:    { enabled: true,  vol: 0.2,  pan: 0,   type: 'pink' },
-      ocean:    { enabled: false, vol: 0.65, pan: 0 },
-      iso:      { enabled: false, vol: 0.4,  pan: 0,   beat: 10,  carrier: 174 },
-      tones:    { enabled: true,  vol: 0.45, pan: 0 },
-    },
-    steps: [
-      { beat:10, carrier:432, holdSecs:300, rampSecs:0,
-        toneCues:[{ hz:432, atSecs:5 }, { hz:417, atSecs:150 }] },
-      { beat:7,  carrier:396, holdSecs:360, rampSecs:120,
-        toneCues:[{ hz:528, atSecs:10 }, { hz:396, atSecs:180 }] },
-      { beat:4,  carrier:285, holdSecs:360, rampSecs:180,
-        toneCues:[{ hz:285, atSecs:10 }, { hz:174, atSecs:200 }] },
-    ] },
-
-  { name: 'Root to Crown',
-    desc: 'Theta rising to alpha with a chakra tone progression.',
-    mixer: {
-      masterVol: 0.25, waveType: 'sine', isoDuty: 0.5,
-      binaural: { enabled: true,  vol: 0.3 },
-      noise:    { enabled: false, vol: 0.2,  pan: 0,   type: 'pink' },
-      ocean:    { enabled: true,  vol: 0.65, pan: 0 },
-      iso:      { enabled: false, vol: 0.4,  pan: 0,   beat: 10,  carrier: 174 },
-      tones:    { enabled: true,  vol: 0.45, pan: 0 },
-    },
-    steps: [
-      { beat:6,  carrier:200, holdSecs:180, rampSecs:0,
-        toneCues:[{ hz:174, atSecs:5 }, { hz:285, atSecs:80 }] },
-      { beat:8,  carrier:250, holdSecs:240, rampSecs:120,
-        toneCues:[{ hz:396, atSecs:10 }, { hz:528, atSecs:120 }] },
-      { beat:10, carrier:300, holdSecs:240, rampSecs:120,
-        toneCues:[{ hz:741, atSecs:10 }, { hz:963, atSecs:120 }] },
-    ] },
-
-  { name: 'Gamma + Om',
-    desc: 'Alpha warm-up into gamma clarity. Binaural and Iso Pulse run simultaneously on independent frequencies.',
-    mixer: {
-      masterVol: 0.25, waveType: 'sine', isoDuty: 0.5,
-      binaural: { enabled: true,  vol: 0.35 },
-      noise:    { enabled: false, vol: 0.2,  pan: 0,    type: 'pink' },
-      ocean:    { enabled: false, vol: 0.65, pan: 0 },
-      iso:      { enabled: true,  vol: 0.35, pan: 0.15, beat: 40,  carrier: 320 },
-      tones:    { enabled: true,  vol: 0.45, pan: 0 },
-    },
-    steps: [
-      { beat:10, carrier:432, holdSecs:180, rampSecs:0,
-        toneCues:[{ hz:111, atSecs:5 }, { hz:432, atSecs:90 }] },
-      { beat:25, carrier:320, holdSecs:240, rampSecs:120,
-        toneCues:[{ hz:963, atSecs:10 }, { hz:741, atSecs:120 }] },
-      { beat:40, carrier:280, holdSecs:240, rampSecs:120,
-        toneCues:[{ hz:852, atSecs:10 }, { hz:963, atSecs:120 }] },
-    ] },
-
-  { name: 'Chakra Reset',
-    desc: '21 min · Seven chakras · alpha→theta→alpha arc · Ocean · Solfeggio tone cues',
-    mixer: {
-      masterVol: 0.25, waveType: 'sine', isoDuty: 0.5,
-      driftEnabled: true, reverbEnabled: true,
-      binaural: { enabled: true,  vol: 0.3 },
-      noise:    { enabled: false, vol: 0.2,  pan: 0, type: 'pink' },
-      ocean:    { enabled: true,  vol: 0.7,  pan: 0 },
-      iso:      { enabled: false, vol: 0.4,  pan: 0, beat: 10, carrier: 174 },
-      tones:    { enabled: true,  vol: 0.45, pan: 0 },
-    },
-    steps: CHAKRA_RESET_PROGRAM,
-  },
-];
-
-// Presets
-const PRESETS = {
-  delta:    { beat: 2,    carrier: 120 },
-  theta:    { beat: 6,    carrier: 160 },
-  alpha:    { beat: 10,   carrier: 200 },
-  beta:     { beat: 18,   carrier: 240 },
-  gamma:    { beat: 40,   carrier: 320 },
-  schumann: { beat: 7.83, carrier: 160 },
-};
-
-// 7 chakras × 180 s = 1260 s = 21 minutes
-// Beat arc: mid-alpha (10) → Schumann (7.83) → theta (6.5) → Schumann → mid-alpha
-// Carrier arc: 174 Hz (Foundation) → 228 Hz → 174 Hz (circular)
 // ══════════════════════════════════════════════════════
 // AUDIO ENGINE
 // ══════════════════════════════════════════════════════
@@ -2181,14 +2353,18 @@ function toggleTheme() {
   const light = document.documentElement.getAttribute('data-theme') === 'light';
   const next  = light ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('liminal-theme', next);
+  localStorage.setItem('sympatheia-theme', next);
   document.getElementById('theme-icon-moon').style.display = next === 'light' ? 'none'  : '';
   document.getElementById('theme-icon-sun').style.display  = next === 'light' ? ''      : 'none';
 }
 
-// Apply saved theme on load
+// Apply saved theme on load (with one-time migration from old 'liminal-theme' key)
 (function() {
-  const saved = localStorage.getItem('liminal-theme') || 'dark';
+  if (localStorage.getItem('liminal-theme') && !localStorage.getItem('sympatheia-theme')) {
+    localStorage.setItem('sympatheia-theme', localStorage.getItem('liminal-theme'));
+    localStorage.removeItem('liminal-theme');
+  }
+  const saved = localStorage.getItem('sympatheia-theme') || 'dark';
   if (saved === 'light') {
     document.documentElement.setAttribute('data-theme', 'light');
     document.getElementById('theme-icon-moon').style.display = 'none';
@@ -2321,6 +2497,15 @@ function _hardStop() {
     masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
     masterGain.gain.setValueAtTime(volume, audioCtx.currentTime);
   }
+  // Release the OS audio session. audioCtx.suspend() tells the OS there is no
+  // active audio work, stopping coreaudiod CPU usage on macOS and releasing the
+  // iOS audio session lock (which otherwise drains battery with screen off).
+  // startAudio() / startSequence() / fireTone() each call audioCtx.resume() so
+  // this is transparent to the user on next play.
+  if (audioCtx) audioCtx.suspend().catch(() => {});
+  // Stop the silent keepalive loop — it was only needed to hold the audio session
+  // open during playback. It is restarted by updateMediaSession() on next play.
+  if (_silentAudio) _silentAudio.pause();
 }
 
 // ── Session Timer ──────────────────────────────────────
@@ -2457,6 +2642,24 @@ function updateBinauralFreqs() {
 const ISO_LOOKAHEAD = 0.15;
 const ISO_SCHEDULE_INTERVAL = 80;
 
+function _refillIsoPulses() {
+  if (!audioCtx || !isoGain) return;
+  const horizon = audioCtx.currentTime + ISO_LOOKAHEAD;
+  const period  = 1 / CH.iso.beat;
+  const onTime  = period * isoDuty;
+  const ramp    = Math.min(0.008, period * 0.05);
+
+  let t = Math.max(isoNextPulseTime, audioCtx.currentTime);
+  while (t < horizon) {
+    isoGain.gain.setValueAtTime(0, t);
+    isoGain.gain.linearRampToValueAtTime(1, t + ramp);
+    isoGain.gain.setValueAtTime(1, t + onTime - ramp);
+    isoGain.gain.linearRampToValueAtTime(0, t + onTime);
+    t += period;
+  }
+  isoNextPulseTime = t;
+}
+
 function startIsochronic() {
   stopIsochronic();
 
@@ -2473,31 +2676,14 @@ function startIsochronic() {
   isoGain.connect(isoPan);
   isoOsc.start();
 
-  let nextPulseTime = now;
-  isoLfoInterval = setInterval(() => scheduleIsoPulses(nextPulseTime), ISO_SCHEDULE_INTERVAL);
-
-  function scheduleIsoPulses(startFrom) {
-    if (!audioCtx || !isoGain) return;
-    const horizon = audioCtx.currentTime + ISO_LOOKAHEAD;
-    const period  = 1 / CH.iso.beat;
-    const onTime  = period * isoDuty;
-    const ramp    = Math.min(0.008, period * 0.05);
-
-    let t = Math.max(startFrom, audioCtx.currentTime);
-    while (t < horizon) {
-      isoGain.gain.setValueAtTime(0, t);
-      isoGain.gain.linearRampToValueAtTime(1, t + ramp);
-      isoGain.gain.setValueAtTime(1, t + onTime - ramp);
-      isoGain.gain.linearRampToValueAtTime(0, t + onTime);
-      t += period;
-    }
-    nextPulseTime = t;
-  }
+  isoNextPulseTime = now;
+  _refillIsoPulses();
+  isoSchedulerInterval = setInterval(_refillIsoPulses, ISO_SCHEDULE_INTERVAL);
 }
 
 function stopIsochronic() {
-  clearInterval(isoLfoInterval);
-  isoLfoInterval = null;
+  clearInterval(isoSchedulerInterval);
+  isoSchedulerInterval = null;
   try { isoOsc && isoOsc.stop(); } catch(e) {}
   isoOsc = null; isoGain = null;
 }
@@ -2729,6 +2915,17 @@ function fireTone(hz) {
   osc.start(now);
   osc.stop(now + dur + 0.2);
   markTonePlaying(hz, dur);
+
+  // Re-suspend the AudioContext after this tone finishes if no session is playing.
+  // This releases coreaudiod / iOS audio session the same way _hardStop() does.
+  _activeToneCount++;
+  setTimeout(() => {
+    _activeToneCount--;
+    if (!isPlaying && _activeToneCount === 0) {
+      if (audioCtx) audioCtx.suspend().catch(() => {});
+      if (_silentAudio) _silentAudio.pause();
+    }
+  }, (dur + 0.4) * 1000);
 }
 
 function fireToneAt(hz, absCtxTime, adsrOverride) {
@@ -2883,22 +3080,28 @@ function applyPreset(name) {
   updateInfoBar();
 }
 
-function loadChakraReset(btn) {
-  seqName  = 'Chakra Reset';
-  seqSteps = CHAKRA_RESET_PROGRAM.map(s => JSON.parse(JSON.stringify(s)));
+// Render buttons for any program in BUILT_IN_PROGRAMS that has featured:true.
+// Called once on page load; appends to the existing #presets grid.
+function renderFeaturedPrograms() {
+  const container = document.getElementById('presets');
+  if (!container) return;
+  const featured = BUILT_IN_PROGRAMS.filter(p => p.featured);
+  featured.forEach(prog => {
+    const totalSecs = (prog.steps || []).reduce((t, s) => t + (s.rampSecs || 0) + (s.holdSecs || 0), 0);
+    const mins = Math.round(totalSecs / 60);
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn preset-btn-session';
+    btn.innerHTML =
+      `<span class="preset-name">${prog.name}</span>` +
+      (mins ? `<span class="preset-hz">${mins} min</span>` : '') +
+      (prog.featuredDesc ? `<span class="preset-desc">${prog.featuredDesc} ✦</span>` : '');
+    btn.addEventListener('click', () => _loadFeaturedProgram(prog, btn));
+    container.appendChild(btn);
+  });
+}
 
-  // Ensure ocean is on
-  if (!CH.ocean.enabled) toggleChannel('ocean');
-
-  // Enable reverb and carrier drift
-  driftEnabled  = true;
-  reverbEnabled = true;
-  const driftCb  = document.getElementById('opt-drift');
-  const reverbCb = document.getElementById('opt-reverb');
-  if (driftCb)  driftCb.checked  = true;
-  if (reverbCb) reverbCb.checked = true;
-
-  // Expand sequencer if collapsed
+function _loadFeaturedProgram(prog, btn) {
+  loadProgram(prog);
   if (!seqEnabled) {
     seqEnabled = true;
     document.getElementById('seq-panel').style.display = 'block';
@@ -2906,13 +3109,8 @@ function loadChakraReset(btn) {
     tb.textContent = '▼ Collapse';
     tb.classList.add('active');
   }
-  document.getElementById('seq-name').value = seqName;
-  renderSeqSteps();
-  updateSeqTotal();
-
   document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-
+  btn.classList.add('active');
   document.getElementById('seq-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -3548,11 +3746,26 @@ function updateSeqRunBtn(running) {
   btn.classList.toggle('active', running);
 }
 
-function startSequence() {
-  initAudio();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
+// Apply per-channel volume overrides from a step to the gain nodes + UI sliders.
+// Used by startSequence() for step 0 and tickSequence() on step entry.
+function _applyStepChannelVols(step) {
+  if (!step.channelVols) return;
+  const gainMap = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
+  for (const [ch, vol] of Object.entries(step.channelVols)) {
+    if (!CH[ch]) continue;
+    const v = Math.max(0, Math.min(1, parseFloat(vol)));
+    CH[ch].vol = v;
+    if (gainMap[ch]) gainMap[ch].gain.value = v;
+    updateSliderFill('sl-ch-' + ch + '-vol', v, 0, 1);
+    const sl  = document.getElementById('sl-ch-'  + ch + '-vol');
+    const val = document.getElementById('val-ch-' + ch + '-vol');
+    if (sl)  sl.value = v;
+    if (val) val.textContent = Math.round(v * 100) + '%';
+  }
+}
 
-  // Save channel volumes and enabled states so we can restore them when the sequence ends
+function startSequence() {
+  // Save current channel volumes/enabled so they can be restored when the sequence ends
   _seqSavedChVols = {};
   _seqSavedChEnabled = {};
   ['binaural','noise','ocean','ambient','iso','tones'].forEach(ch => {
@@ -3564,24 +3777,7 @@ function startSequence() {
   beatFreq    = first.beat;
   carrierFreq = first.carrier;
 
-  // Apply step 0's channelVols/channelEnabled immediately so the mixer reflects the
-  // sequence's starting state from the moment Run is pressed. Without this, the first
-  // tickSequence() call (100ms later) would apply them, making it look like the mixer
-  // is being "reset" shortly after the saved state was applied.
-  const _gainMap = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
-  if (first.channelVols) {
-    for (const [ch, vol] of Object.entries(first.channelVols)) {
-      if (!CH[ch]) continue;
-      const v = Math.max(0, Math.min(1, parseFloat(vol)));
-      CH[ch].vol = v;
-      if (_gainMap[ch]) _gainMap[ch].gain.value = v;
-      updateSliderFill('sl-ch-' + ch + '-vol', v, 0, 1);
-      const sl  = document.getElementById('sl-ch-'  + ch + '-vol');
-      const val = document.getElementById('val-ch-' + ch + '-vol');
-      if (sl)  sl.value = v;
-      if (val) val.textContent = Math.round(v * 100) + '%';
-    }
-  }
+  // Apply step 0 channelEnabled to CH state so startAudio() starts the correct channels
   if (first.channelEnabled) {
     for (const [ch, enabled] of Object.entries(first.channelEnabled)) {
       if (!CH[ch]) continue;
@@ -3591,23 +3787,22 @@ function startSequence() {
       if (ch === 'iso') document.getElementById('iso-duty-row').style.display = enabled ? 'grid' : 'none';
     }
   }
-  _seqCurrentStep = 0; // Don't re-apply step 0 on the first tick
+  _seqCurrentStep = 0;
 
-  if (CH.binaural.enabled) startBinaural();
-  if (CH.noise.enabled)    startNoise();
-  if (CH.ocean.enabled)    startOcean();
-  if (CH.ambient.enabled)  startAmbient();
-  if (CH.iso.enabled)      startIsochronic();
+  // Build schedule and set session duration before startAudio() calls startSessionTimer()
+  _seqSchedule        = buildSeqSchedule();
+  _seqPrevSessionDur  = sessionDurationSecs;
+  sessionDurationSecs = _seqSchedule.totalSecs;
 
-  _seqSchedule    = buildSeqSchedule();
+  // Common foundation: initAudio, resume, start enabled channels, 4-sec fade-in, session timer
+  startAudio();
+
+  // Apply step 0 channel volumes now that gain nodes exist (initAudio created them above)
+  _applyStepChannelVols(first);
+
   seqStartCtxTime = audioCtx.currentTime;
   applySchedule(_seqSchedule.events, seqStartCtxTime);
   scheduleToneCues(seqStartCtxTime);
-
-  // Feed sequence total into the session timer
-  _seqPrevSessionDur  = sessionDurationSecs;
-  sessionDurationSecs = _seqSchedule.totalSecs;
-  startSessionTimer();
 
   document.getElementById('seq-progress').style.display = 'block';
   seqTickInterval = setInterval(tickSequence, 100);
@@ -3712,21 +3907,7 @@ function tickSequence() {
   // Apply channelVols and channelEnabled on step entry
   if (currentStepIdx !== _seqCurrentStep) {
     _seqCurrentStep = currentStepIdx;
-    const vols = seqSteps[currentStepIdx].channelVols;
-    if (vols) {
-      const gainNodes = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
-      for (const [ch, vol] of Object.entries(vols)) {
-        if (!CH[ch]) continue;
-        const v = Math.max(0, Math.min(1, parseFloat(vol)));
-        CH[ch].vol = v;
-        if (gainNodes[ch]) gainNodes[ch].gain.value = v;
-        updateSliderFill('sl-ch-' + ch + '-vol', v, 0, 1);
-        const sl  = document.getElementById('sl-ch-'  + ch + '-vol');
-        const val = document.getElementById('val-ch-' + ch + '-vol');
-        if (sl)  sl.value = v;
-        if (val) val.textContent = Math.round(v * 100) + '%';
-      }
-    }
+    _applyStepChannelVols(seqSteps[currentStepIdx]);
     const enables = seqSteps[currentStepIdx].channelEnabled;
     if (enables) {
       for (const [ch, enabled] of Object.entries(enables)) {
@@ -3758,8 +3939,13 @@ function tickSequence() {
 // ══════════════════════════════════════════════════════
 
 function initUserPrograms() {
+  // One-time migration from old 'liminal_programs' key
+  if (localStorage.getItem('liminal_programs') && !localStorage.getItem('sympatheia_programs')) {
+    localStorage.setItem('sympatheia_programs', localStorage.getItem('liminal_programs'));
+    localStorage.removeItem('liminal_programs');
+  }
   try {
-    const raw = localStorage.getItem('liminal_programs');
+    const raw = localStorage.getItem('sympatheia_programs');
     if (raw) userPrograms = JSON.parse(raw);
   } catch(e) { userPrograms = []; }
 }
@@ -3972,7 +4158,7 @@ function exportSeq() {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = (seqName || 'liminal-program') + '.json';
+  a.download = (seqName || 'sympatheia-program') + '.json';
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -4071,7 +4257,7 @@ function saveProgram() {
   const idx = userPrograms.findIndex(p => p.name === name);
   if (idx >= 0) userPrograms[idx] = prog;
   else userPrograms.push(prog);
-  localStorage.setItem('liminal_programs', JSON.stringify(userPrograms));
+  localStorage.setItem('sympatheia_programs', JSON.stringify(userPrograms));
   if (seqLibOpen) renderLibrary();
 }
 
@@ -4104,7 +4290,7 @@ function loadProgram(prog) {
 
 function deleteUserProgram(i) {
   userPrograms.splice(i, 1);
-  localStorage.setItem('liminal_programs', JSON.stringify(userPrograms));
+  localStorage.setItem('sympatheia_programs', JSON.stringify(userPrograms));
   renderLibrary();
 }
 
@@ -4221,7 +4407,9 @@ _updateBeatPulse();
 
 // Resume AudioContext on any interaction (iOS Safari re-suspends between gestures)
 document.addEventListener('click', () => {
-  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  // Only resume if audio is actually playing — otherwise we'd immediately undo
+  // the suspend that _hardStop() issues to release the OS audio session.
+  if (audioCtx && audioCtx.state === 'suspended' && isPlaying) audioCtx.resume();
   // Retry silent audio if it stalled before a user gesture was available
   if (_silentAudio && _silentAudio.paused && isPlaying) _silentAudio.play().catch(() => {});
 });
@@ -4265,7 +4453,7 @@ function updateMediaSession(playing) {
 
 // Resume AudioContext when returning from background (screen unlock / app switch)
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && audioCtx && audioCtx.state === 'suspended') {
+  if (!document.hidden && audioCtx && audioCtx.state === 'suspended' && isPlaying) {
     audioCtx.resume();
   }
   // Re-acquire wake lock when page becomes visible again (lock is auto-released on hide)
@@ -4308,8 +4496,9 @@ function _releaseWakeLock() {
   _wakeLock = null;
 }
 
-// Load persisted user programs
+// Load persisted user programs and render featured program buttons
 initUserPrograms();
+renderFeaturedPrograms();
 
 // Auto-load sequence from ?seq=<url> or ?data=<base64> query parameter
 (function checkSeqParam() {
@@ -4324,7 +4513,7 @@ initUserPrograms();
       setTimeout(() => {
         document.getElementById('seq-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
-    }).catch(() => console.warn('Liminal: failed to decode ?data= param'));
+    }).catch(() => console.warn('Sympatheia: failed to decode ?data= param'));
   } else if (seqUrl) {
     fetchSeqFromUrl(seqUrl, { silent: false }).then(() => {
       if (!seqEnabled) toggleSeq();

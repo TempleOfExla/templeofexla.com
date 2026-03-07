@@ -42,7 +42,7 @@ export default async function(eleventyConfig) {
   }
  
   eleventyConfig.addPassthroughCopy("src/styles.css");
-  eleventyConfig.addPassthroughCopy("src/liminal.html");
+  eleventyConfig.addPassthroughCopy("src/sympatheia.html");
   eleventyConfig.addPassthroughCopy("src/bells.html");
 
   eleventyConfig.addFilter("featuredFirst", (arr, count = 3) => {
