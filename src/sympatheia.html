@@ -1528,6 +1528,11 @@ input[type=range]::-moz-range-thumb {
       <span class="option-hint">slow LFO prevents habituation</span>
     </label>
     <label class="option-check">
+      <input type="checkbox" id="opt-beat-drift" onchange="toggleBeatDrift(this.checked)">
+      Beat Drift
+      <span class="option-hint">±0.3 Hz wander on beat freq</span>
+    </label>
+    <label class="option-check">
       <input type="checkbox" id="opt-reverb" onchange="toggleReverb(this.checked)">
       Tone Reverb
       <span class="option-hint">3.5 s convolution bloom</span>
@@ -1669,6 +1674,37 @@ input[type=range]::-moz-range-thumb {
             <input type="range" id="sl-ch-ocean-pan" min="-1" max="1" step="0.05" value="0"
               oninput="updateChannelPan('ocean',this.value)">
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ocean+ (enhanced: asymmetric swell + surf hiss + tunable period) -->
+    <div class="layer-strip">
+      <button class="layer-toggle" id="ch-toggle-ocean2" onclick="toggleChannel('ocean2')">○</button>
+      <span class="layer-name">Ocean+</span>
+      <div class="layer-sliders">
+        <div class="layer-slider-group">
+          <span class="layer-slider-label">vol</span>
+          <div class="slider-wrap layer-slider-wrap">
+            <input type="range" id="sl-ch-ocean2-vol" min="0" max="1" step="0.01" value="0.65"
+              oninput="updateChannelVol('ocean2',this.value)">
+          </div>
+          <span class="layer-val" id="val-ch-ocean2-vol">65%</span>
+        </div>
+        <div class="layer-slider-group">
+          <span class="layer-slider-label">pan</span>
+          <div class="slider-wrap layer-slider-wrap">
+            <input type="range" id="sl-ch-ocean2-pan" min="-1" max="1" step="0.05" value="0"
+              oninput="updateChannelPan('ocean2',this.value)">
+          </div>
+        </div>
+        <div class="layer-slider-group">
+          <span class="layer-slider-label">period</span>
+          <div class="slider-wrap layer-slider-wrap">
+            <input type="range" id="sl-ocean2-period" min="15" max="60" step="1" value="20"
+              oninput="updateOcean2WavePeriod(this.value)">
+          </div>
+          <span class="layer-val" id="val-ocean2-period">20s</span>
         </div>
       </div>
     </div>
@@ -2181,6 +2217,7 @@ const CH = {
   binaural: { vol: 0.35, enabled: true  },
   noise:    { vol: 0.2,  enabled: false, pan: 0, type: 'pink' },
   ocean:    { vol: 0.65, enabled: false, pan: 0 },
+  ocean2:   { vol: 0.65, enabled: false, pan: 0, wavePeriod: 20 },
   ambient:  { vol: 0.5,  enabled: false, pan: 0 },
   iso:      { vol: 0.4,  enabled: false, pan: 0, beat: 10, carrier: 174 },
   tones:    { vol: 0.45, enabled: true,  pan: 0 },
@@ -2199,6 +2236,10 @@ let noiseChGain = null, noisePan = null, noiseSource = null, noiseFilter = null;
 // Ocean nodes (procedural only)
 let oceanChGain = null, oceanPan = null;
 let oceanProcNodes  = null;
+
+// Ocean+ nodes (enhanced procedural with asymmetry + surf hiss)
+let ocean2ChGain = null, ocean2Pan = null;
+let ocean2ProcNodes = null;
 
 // Ambient file-player nodes
 let ambientChGain = null, ambientPan = null;
@@ -2222,6 +2263,13 @@ let driftGain    = null;
 let driftEnabled = false;
 const DRIFT_RATE = 0.007;  // Hz — ~143 s cycle
 const DRIFT_DEPTH = 8;     // ± Hz
+
+// Beat frequency drift nodes
+let beatDriftLfo     = null;
+let beatDriftGain    = null;
+let beatDriftEnabled = false;
+const BEAT_DRIFT_RATE  = 1 / 300;  // Hz — 300 s (5 min) cycle
+const BEAT_DRIFT_DEPTH = 0.3;      // ± Hz
 
 // Frequency lead-in (ramp-in)
 let rampInEnabled = false;
@@ -2380,6 +2428,36 @@ function toggleDrift(enabled) {
   }
 }
 
+// ── Beat Drift ─────────────────────────────────────────
+
+function startBeatDrift() {
+  if (!audioCtx || !rightOsc) return;
+  stopBeatDrift();
+  beatDriftLfo  = audioCtx.createOscillator();
+  beatDriftGain = audioCtx.createGain();
+  beatDriftLfo.frequency.value = BEAT_DRIFT_RATE;
+  beatDriftGain.gain.value     = BEAT_DRIFT_DEPTH;
+  beatDriftLfo.connect(beatDriftGain);
+  beatDriftGain.connect(rightOsc.frequency);
+  beatDriftLfo.start();
+}
+
+function stopBeatDrift() {
+  if (beatDriftLfo) {
+    try { beatDriftLfo.stop(); } catch(e) {}
+    if (beatDriftGain && rightOsc) try { beatDriftGain.disconnect(rightOsc.frequency); } catch(e) {}
+  }
+  beatDriftLfo = null; beatDriftGain = null;
+}
+
+function toggleBeatDrift(enabled) {
+  beatDriftEnabled = enabled;
+  if (isPlaying && CH.binaural.enabled) {
+    if (beatDriftEnabled) startBeatDrift();
+    else                  stopBeatDrift();
+  }
+}
+
 function toggleReverb(enabled) {
   reverbEnabled = enabled;
   // initReverb() is called lazily in fireTone when first needed
@@ -2416,6 +2494,7 @@ function initAudio() {
   binauralChGain = audioCtx.createGain();
   noiseChGain    = audioCtx.createGain();
   oceanChGain    = audioCtx.createGain();
+  ocean2ChGain   = audioCtx.createGain();
   ambientChGain  = audioCtx.createGain();
   isoChGain      = audioCtx.createGain();
   tonesChGain    = audioCtx.createGain();
@@ -2423,6 +2502,7 @@ function initAudio() {
   binauralChGain.gain.value = CH.binaural.vol;
   noiseChGain.gain.value    = CH.noise.vol;
   oceanChGain.gain.value    = CH.ocean.vol;
+  ocean2ChGain.gain.value   = CH.ocean2.vol;
   ambientChGain.gain.value  = CH.ambient.vol;
   isoChGain.gain.value      = CH.iso.vol;
   tonesChGain.gain.value    = CH.tones.vol;
@@ -2430,12 +2510,14 @@ function initAudio() {
   // Panners
   noisePan   = audioCtx.createStereoPanner();
   oceanPan   = audioCtx.createStereoPanner();
+  ocean2Pan  = audioCtx.createStereoPanner();
   ambientPan = audioCtx.createStereoPanner();
   isoPan     = audioCtx.createStereoPanner();
   tonesPan   = audioCtx.createStereoPanner();
 
   noisePan.pan.value   = CH.noise.pan;
   oceanPan.pan.value   = CH.ocean.pan;
+  ocean2Pan.pan.value  = CH.ocean2.pan;
   ambientPan.pan.value = CH.ambient.pan;
   isoPan.pan.value     = CH.iso.pan;
   tonesPan.pan.value   = CH.tones.pan;
@@ -2443,6 +2525,7 @@ function initAudio() {
   // Wire: source → panner → channel gain → master
   noisePan.connect(noiseChGain);     noiseChGain.connect(masterGain);
   oceanPan.connect(oceanChGain);     oceanChGain.connect(masterGain);
+  ocean2Pan.connect(ocean2ChGain);   ocean2ChGain.connect(masterGain);
   ambientPan.connect(ambientChGain); ambientChGain.connect(masterGain);
   isoPan.connect(isoChGain);         isoChGain.connect(masterGain);
   tonesPan.connect(tonesChGain);     tonesChGain.connect(masterGain);
@@ -2455,6 +2538,7 @@ function startAudio() {
   if (CH.binaural.enabled) startBinaural();
   if (CH.noise.enabled)    startNoise();
   if (CH.ocean.enabled)    startOcean();
+  if (CH.ocean2.enabled)   startOcean2();
   if (CH.ambient.enabled)  startAmbient();
   if (CH.iso.enabled)      startIsochronic();
   // tones: on-demand / auto-scheduled
@@ -2490,6 +2574,7 @@ function _hardStop() {
   stopIsochronic();
   stopNoise();
   stopOcean();
+  stopOcean2();
   stopAmbient();
   sessionFadingOut = false;
   // Restore gain for next play
@@ -2621,11 +2706,13 @@ function startBinaural() {
   rightPan.connect(binauralChGain);
   rightOsc.start();
 
-  if (driftEnabled) startDrift();
+  if (driftEnabled)     startDrift();
+  if (beatDriftEnabled) startBeatDrift();
 }
 
 function stopBinaural() {
   stopDrift();
+  stopBeatDrift();
   [leftOsc, rightOsc].forEach(o => { try { o && o.stop(); } catch(e) {} });
   [leftOsc, rightOsc, leftPan, rightPan] = [null, null, null, null];
 }
@@ -2848,6 +2935,143 @@ function stopOcean() {
     try { oceanProcNodes.lfoFilterGain.disconnect(); } catch(e) {}
     oceanProcNodes = null;
   }
+}
+
+// ── Ocean+ (enhanced: wave asymmetry + surf hiss + tunable period) ──
+
+function startOcean2() {
+  stopOcean2();
+
+  // Same dual brown noise + interference delay base as Ocean
+  const buf1 = createNoiseBuffer('brown');
+  const buf2 = createNoiseBuffer('brown');
+  const src1 = audioCtx.createBufferSource();
+  src1.buffer = buf1; src1.loop = true;
+  const src2 = audioCtx.createBufferSource();
+  src2.buffer = buf2; src2.loop = true;
+
+  const delay = audioCtx.createDelay(0.1);
+  delay.delayTime.value = 0.025;
+  const delayLfo     = audioCtx.createOscillator();
+  const delayLfoGain = audioCtx.createGain();
+  delayLfo.frequency.value = 0.047;
+  delayLfoGain.gain.value  = 0.018;
+  delayLfo.connect(delayLfoGain);
+  delayLfoGain.connect(delay.delayTime);
+
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 700;
+  filter.Q.value = 0.5;
+  src1.connect(filter);
+  src2.connect(delay);
+  delay.connect(filter);
+
+  // Main LFO — rate driven by wavePeriod setting
+  const lfo = audioCtx.createOscillator();
+  lfo.frequency.value = 1 / CH.ocean2.wavePeriod;
+
+  // Wave asymmetry shaper: x² for positive half (sharp, brief crests),
+  // -√(-x) for negative half (broad, gradual quiet between waves).
+  // Result: waves arrive as short intense bursts; silence between them is long and gradual.
+  const shaper = audioCtx.createWaveShaper();
+  const shaperCurve = new Float32Array(512);
+  for (let i = 0; i < 512; i++) {
+    const x = (i / 511) * 2 - 1;
+    shaperCurve[i] = x >= 0 ? x * x : -Math.sqrt(-x);
+  }
+  shaper.curve = shaperCurve;
+  lfo.connect(shaper);
+
+  // Level swell via shaped LFO
+  const waveGain     = audioCtx.createGain();
+  waveGain.gain.value = 1.0;
+  const lfoLevelGain = audioCtx.createGain();
+  lfoLevelGain.gain.value = 0.25;
+  shaper.connect(lfoLevelGain);
+  lfoLevelGain.connect(waveGain.gain);
+
+  // Filter sweep via shaped LFO
+  const lfoFilterGain = audioCtx.createGain();
+  lfoFilterGain.gain.value = -220;
+  shaper.connect(lfoFilterGain);
+  lfoFilterGain.connect(filter.frequency);
+
+  // Pan sweep via shaped LFO
+  const lfoPanGain = audioCtx.createGain();
+  lfoPanGain.gain.value = 0.3;
+  shaper.connect(lfoPanGain);
+  lfoPanGain.connect(ocean2Pan.pan);
+
+  filter.connect(waveGain);
+  waveGain.connect(ocean2Pan);
+
+  // ── Surf hiss layer ───────────────────────────────────
+  // Pink noise through a highpass filter, amplitude-gated at wave crests only.
+  const hissBuf = createNoiseBuffer('pink');
+  const hissSrc = audioCtx.createBufferSource();
+  hissSrc.buffer = hissBuf; hissSrc.loop = true;
+
+  const hissFilter = audioCtx.createBiquadFilter();
+  hissFilter.type = 'highpass';
+  hissFilter.frequency.value = 1800;
+  hissFilter.Q.value = 0.5;
+
+  const hissGate = audioCtx.createGain();
+  hissGate.gain.value = 0;
+
+  // Half-wave rectifier: only positive LFO (wave crests) opens the hiss gate
+  const hissShaper = audioCtx.createWaveShaper();
+  const hissCurve = new Float32Array(512);
+  for (let i = 0; i < 512; i++) {
+    const x = (i / 511) * 2 - 1;
+    hissCurve[i] = Math.max(0, x);
+  }
+  hissShaper.curve = hissCurve;
+
+  const hissGateDriver = audioCtx.createGain();
+  hissGateDriver.gain.value = 0.10; // hiss peaks at 10% amplitude at wave crest
+
+  shaper.connect(hissShaper);
+  hissShaper.connect(hissGateDriver);
+  hissGateDriver.connect(hissGate.gain);
+
+  hissSrc.connect(hissFilter);
+  hissFilter.connect(hissGate);
+  hissGate.connect(ocean2Pan);
+
+  delayLfo.start();
+  lfo.start();
+  src1.start();
+  src2.start();
+  hissSrc.start();
+
+  ocean2ProcNodes = {
+    src1, src2, delay, delayLfo, delayLfoGain,
+    filter, waveGain, lfo, shaper, lfoLevelGain, lfoFilterGain, lfoPanGain,
+    hissSrc, hissFilter, hissGate, hissShaper, hissGateDriver,
+  };
+}
+
+function stopOcean2() {
+  if (ocean2ProcNodes) {
+    try { ocean2ProcNodes.src1.stop(); } catch(e) {}
+    try { ocean2ProcNodes.src2.stop(); } catch(e) {}
+    try { ocean2ProcNodes.lfo.stop(); } catch(e) {}
+    try { ocean2ProcNodes.delayLfo.stop(); } catch(e) {}
+    try { ocean2ProcNodes.hissSrc.stop(); } catch(e) {}
+    try { ocean2ProcNodes.lfoPanGain.disconnect(); } catch(e) {}
+    try { ocean2ProcNodes.lfoFilterGain.disconnect(); } catch(e) {}
+    try { ocean2ProcNodes.hissGateDriver.disconnect(); } catch(e) {}
+    ocean2ProcNodes = null;
+  }
+}
+
+function updateOcean2WavePeriod(secs) {
+  CH.ocean2.wavePeriod = parseFloat(secs);
+  const el = document.getElementById('val-ocean2-period');
+  if (el) el.textContent = Math.round(CH.ocean2.wavePeriod) + 's';
+  if (ocean2ProcNodes) ocean2ProcNodes.lfo.frequency.value = 1 / CH.ocean2.wavePeriod;
 }
 
 // ── Ambient file player ────────────────────────────────
@@ -3239,12 +3463,14 @@ function toggleChannel(ch) {
       if      (ch === 'binaural') startBinaural();
       else if (ch === 'noise')    startNoise();
       else if (ch === 'ocean')    startOcean();
+      else if (ch === 'ocean2')   startOcean2();
       else if (ch === 'ambient')  startAmbient();
       else if (ch === 'iso')      startIsochronic();
     } else {
       if      (ch === 'binaural') stopBinaural();
       else if (ch === 'noise')    stopNoise();
       else if (ch === 'ocean')    stopOcean();
+      else if (ch === 'ocean2')   stopOcean2();
       else if (ch === 'ambient')  stopAmbient();
       else if (ch === 'iso')      stopIsochronic();
       else if (ch === 'tones')    cancelScheduledTones();
@@ -3260,14 +3486,14 @@ function updateChannelVol(ch, val) {
   if (valEl) valEl.textContent = pct;
   updateSliderFill('sl-ch-' + ch + '-vol', CH[ch].vol, 0, 1);
 
-  const gainMap = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
+  const gainMap = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ocean2: ocean2ChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
   const g = gainMap[ch];
   if (g && audioCtx) g.gain.linearRampToValueAtTime(CH[ch].vol, audioCtx.currentTime + 0.05);
 }
 
 function updateChannelPan(ch, val) {
   CH[ch].pan = parseFloat(val);
-  const panMap = { noise: noisePan, ocean: oceanPan, ambient: ambientPan, iso: isoPan, tones: tonesPan };
+  const panMap = { noise: noisePan, ocean: oceanPan, ocean2: ocean2Pan, ambient: ambientPan, iso: isoPan, tones: tonesPan };
   const p = panMap[ch];
   if (p && audioCtx) p.pan.linearRampToValueAtTime(CH[ch].pan, audioCtx.currentTime + 0.05);
 }
@@ -3750,7 +3976,7 @@ function updateSeqRunBtn(running) {
 // Used by startSequence() for step 0 and tickSequence() on step entry.
 function _applyStepChannelVols(step) {
   if (!step.channelVols) return;
-  const gainMap = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
+  const gainMap = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ocean2: ocean2ChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
   for (const [ch, vol] of Object.entries(step.channelVols)) {
     if (!CH[ch]) continue;
     const v = Math.max(0, Math.min(1, parseFloat(vol)));
@@ -3768,7 +3994,7 @@ function startSequence() {
   // Save current channel volumes/enabled so they can be restored when the sequence ends
   _seqSavedChVols = {};
   _seqSavedChEnabled = {};
-  ['binaural','noise','ocean','ambient','iso','tones'].forEach(ch => {
+  ['binaural','noise','ocean','ocean2','ambient','iso','tones'].forEach(ch => {
     _seqSavedChVols[ch]    = CH[ch].vol;
     _seqSavedChEnabled[ch] = CH[ch].enabled;
   });
@@ -3838,8 +4064,8 @@ function stopSequence() {
 
   // Restore channel volumes that tickSequence may have mutated via channelVols
   if (_seqSavedChVols) {
-    const gainNodes = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
-    ['binaural','noise','ocean','ambient','iso','tones'].forEach(ch => {
+    const gainNodes = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ocean2: ocean2ChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
+    ['binaural','noise','ocean','ocean2','ambient','iso','tones'].forEach(ch => {
       const vol = _seqSavedChVols[ch];
       CH[ch].vol = vol;
       if (gainNodes[ch]) gainNodes[ch].gain.value = vol;
@@ -3854,7 +4080,7 @@ function stopSequence() {
 
   // Restore channel enabled states that tickSequence may have changed via channelEnabled
   if (_seqSavedChEnabled) {
-    ['binaural','noise','ocean','ambient','iso','tones'].forEach(ch => {
+    ['binaural','noise','ocean','ocean2','ambient','iso','tones'].forEach(ch => {
       CH[ch].enabled = _seqSavedChEnabled[ch];
       const btn = document.getElementById('ch-toggle-' + ch);
       if (btn) { btn.classList.toggle('active', CH[ch].enabled); btn.textContent = CH[ch].enabled ? '●' : '○'; }
@@ -3958,12 +4184,14 @@ function captureMixerState() {
     waveType,
     isoDuty,
     driftEnabled,
+    beatDriftEnabled,
     reverbEnabled,
     rampInEnabled, rampInDelta, rampInMins,
     toneAdsr:  { attack: TONE_ADSR.attack, decay: TONE_ADSR.decay, sustain: TONE_ADSR.sustain, hold: TONE_ADSR.hold, release: TONE_ADSR.release },
     binaural: { enabled: CH.binaural.enabled, vol: CH.binaural.vol },
     noise:    { enabled: CH.noise.enabled,    vol: CH.noise.vol,    pan: CH.noise.pan,  type: CH.noise.type },
     ocean:    { enabled: CH.ocean.enabled,    vol: CH.ocean.vol,    pan: CH.ocean.pan },
+    ocean2:   { enabled: CH.ocean2.enabled,   vol: CH.ocean2.vol,   pan: CH.ocean2.pan, wavePeriod: CH.ocean2.wavePeriod },
     ambient:  { enabled: CH.ambient.enabled,  vol: CH.ambient.vol,  pan: CH.ambient.pan },
     iso:      { enabled: CH.iso.enabled,      vol: CH.iso.vol,      pan: CH.iso.pan,    beat: CH.iso.beat, carrier: CH.iso.carrier },
     tones:    { enabled: CH.tones.enabled,    vol: CH.tones.vol,    pan: CH.tones.pan },
@@ -4014,6 +4242,16 @@ function applyMixerState(mixer) {
     }
   }
 
+  // Beat drift
+  if (mixer.beatDriftEnabled != null) {
+    beatDriftEnabled = mixer.beatDriftEnabled;
+    const cb = document.getElementById('opt-beat-drift');
+    if (cb) cb.checked = beatDriftEnabled;
+    if (isPlaying && CH.binaural.enabled) {
+      if (beatDriftEnabled) startBeatDrift(); else stopBeatDrift();
+    }
+  }
+
   // Reverb
   if (mixer.reverbEnabled != null) {
     reverbEnabled = mixer.reverbEnabled;
@@ -4055,7 +4293,7 @@ function applyMixerState(mixer) {
   }
 
   // Channels
-  ['binaural', 'noise', 'ocean', 'ambient', 'iso', 'tones'].forEach(ch => {
+  ['binaural', 'noise', 'ocean', 'ocean2', 'ambient', 'iso', 'tones'].forEach(ch => {
     const m = mixer[ch];
     if (!m) return;
 
@@ -4067,7 +4305,7 @@ function applyMixerState(mixer) {
       const valEl = document.getElementById('val-ch-' + ch + '-vol');
       if (valEl) valEl.textContent = Math.round(CH[ch].vol * 100) + '%';
       updateSliderFill('sl-ch-' + ch + '-vol', CH[ch].vol, 0, 1);
-      const gainMap = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
+      const gainMap = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ocean2: ocean2ChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
       const g = gainMap[ch];
       if (g && audioCtx) g.gain.linearRampToValueAtTime(CH[ch].vol, audioCtx.currentTime + 0.05);
     }
@@ -4078,7 +4316,7 @@ function applyMixerState(mixer) {
       const sl = document.getElementById('sl-ch-' + ch + '-pan');
       if (sl) sl.value = CH[ch].pan;
       updateSliderFill('sl-ch-' + ch + '-pan', CH[ch].pan, -1, 1);
-      const panMap = { noise: noisePan, ocean: oceanPan, ambient: ambientPan, iso: isoPan, tones: tonesPan };
+      const panMap = { noise: noisePan, ocean: oceanPan, ocean2: ocean2Pan, ambient: ambientPan, iso: isoPan, tones: tonesPan };
       const p = panMap[ch];
       if (p && audioCtx) p.pan.linearRampToValueAtTime(CH[ch].pan, audioCtx.currentTime + 0.05);
     }
@@ -4089,6 +4327,16 @@ function applyMixerState(mixer) {
       const sel = document.getElementById('noise-type-sel');
       if (sel) sel.value = CH.noise.type;
       if (isPlaying && CH.noise.enabled) startNoise();
+    }
+
+    // Ocean2-specific: wave period
+    if (ch === 'ocean2' && m.wavePeriod != null) {
+      CH.ocean2.wavePeriod = m.wavePeriod;
+      const sl = document.getElementById('sl-ocean2-period');
+      const el = document.getElementById('val-ocean2-period');
+      if (sl) sl.value = CH.ocean2.wavePeriod;
+      if (el) el.textContent = Math.round(CH.ocean2.wavePeriod) + 's';
+      if (ocean2ProcNodes) ocean2ProcNodes.lfo.frequency.value = 1 / CH.ocean2.wavePeriod;
     }
 
     // Iso-specific frequency controls
@@ -4123,11 +4371,13 @@ function applyMixerState(mixer) {
           if      (ch === 'binaural') startBinaural();
           else if (ch === 'noise')    startNoise();
           else if (ch === 'ocean')    startOcean();
+          else if (ch === 'ocean2')   startOcean2();
           else if (ch === 'iso')      startIsochronic();
         } else {
           if      (ch === 'binaural') stopBinaural();
           else if (ch === 'noise')    stopNoise();
           else if (ch === 'ocean')    stopOcean();
+          else if (ch === 'ocean2')   stopOcean2();
           else if (ch === 'iso')      stopIsochronic();
         }
       }
@@ -4145,6 +4395,7 @@ function _stepsWithMixerBaked() {
     binaural: CH.binaural.vol,
     noise:    CH.noise.vol,
     ocean:    CH.ocean.vol,
+    ocean2:   CH.ocean2.vol,
     ambient:  CH.ambient.vol,
     iso:      CH.iso.vol,
     tones:    CH.tones.vol,
@@ -4395,6 +4646,7 @@ updateSliderFill('sl-duty',    isoDuty,     0.1, 0.9);
 updateSliderFill('sl-ch-binaural-vol', CH.binaural.vol, 0, 1);
 updateSliderFill('sl-ch-noise-vol',    CH.noise.vol,    0, 1);
 updateSliderFill('sl-ch-ocean-vol',    CH.ocean.vol,    0, 1);
+updateSliderFill('sl-ch-ocean2-vol',   CH.ocean2.vol,   0, 1);
 updateSliderFill('sl-ch-ambient-vol',  CH.ambient.vol,  0, 1);
 updateSliderFill('sl-ch-iso-vol',      CH.iso.vol,      0, 1);
 updateSliderFill('sl-ch-tones-vol',    CH.tones.vol,    0, 1);
