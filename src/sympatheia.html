@@ -1730,6 +1730,37 @@ input[type=range]::-moz-range-thumb {
       </div>
     </div>
 
+    <!-- Sub-bass -->
+    <div class="layer-strip">
+      <button class="layer-toggle" id="ch-toggle-bass" onclick="toggleChannel('bass')">○</button>
+      <span class="layer-name">Sub-bass</span>
+      <div class="layer-sliders">
+        <div class="layer-slider-group">
+          <span class="layer-slider-label">vol</span>
+          <div class="slider-wrap layer-slider-wrap">
+            <input type="range" id="sl-ch-bass-vol" min="0" max="1" step="0.01" value="0.25"
+              oninput="updateChannelVol('bass',this.value)">
+          </div>
+          <span class="layer-val" id="val-ch-bass-vol">25%</span>
+        </div>
+        <div class="layer-slider-group">
+          <span class="layer-slider-label">pan</span>
+          <div class="slider-wrap layer-slider-wrap">
+            <input type="range" id="sl-ch-bass-pan" min="-1" max="1" step="0.05" value="0"
+              oninput="updateChannelPan('bass',this.value)">
+          </div>
+        </div>
+        <div class="layer-slider-group">
+          <span class="layer-slider-label">hz</span>
+          <div class="slider-wrap layer-slider-wrap">
+            <input type="range" id="sl-ch-bass-freq" min="20" max="60" step="1" value="40"
+              oninput="updateBassFreq(this.value)">
+          </div>
+          <span class="layer-val" id="val-ch-bass-freq">40 Hz</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Iso Pulse -->
     <div class="layer-strip">
       <button class="layer-toggle" id="ch-toggle-iso" onclick="toggleChannel('iso')">○</button>
@@ -1858,7 +1889,7 @@ input[type=range]::-moz-range-thumb {
     <p class="info-body">Play 200 Hz in your left ear and 210 Hz in your right, and your brain perceives the 10 Hz <em>difference</em> as a slow pulse — and gradually synchronises to it. This is called the <strong>frequency-following response</strong>. Different beat frequencies correspond to different brain states: delta for deep sleep, theta for hypnagogic meditation, alpha for calm alertness, beta for active thinking. <strong>Headphones are essential</strong> — the stereo separation between ears is what creates the effect.</p>
 
     <h3 class="info-section">What you can do</h3>
-    <p class="info-body">Mix up to six simultaneous audio layers: binaural beats, isochronic pulses (work without headphones), coloured noise, a procedural ocean soundscape, an ambient file player (load any audio), and sacred-frequency tones with configurable ADSR envelopes. Each layer has its own volume and pan. Use the brainwave presets to jump to common targets, or build a custom <strong>Session Sequence</strong> that ramps frequencies through any arc you design, with timed tone cues firing at precise moments. Share any sequence instantly with the <strong>⧉ Link</strong> button — the full program is compressed into a URL you can paste anywhere.</p>
+    <p class="info-body">Mix seven simultaneous audio layers: binaural beats, isochronic pulses (work without headphones), coloured noise, a procedural ocean soundscape, an ambient file player, a sub-bass sine tone (physical grounding; 40 Hz sits at the gamma boundary for ASSR stimulus), and sacred-frequency tones with configurable ADSR envelopes and stereo shimmer. Enable <strong>Carrier Drift</strong> or <strong>Beat Drift</strong> to slow-modulate the frequencies — the info bar shows the actual live values as they wander. Use the brainwave presets or build a custom <strong>Session Sequence</strong> that ramps through any frequency arc with timed tone cues. Share any sequence with the <strong>⧉ Link</strong> button. <strong>Space</strong> plays and stops; arrow keys nudge the beat frequency.</p>
 
     <h3 class="info-section">Try: Chakra Reset ✦</h3>
     <p class="info-body">A 21-minute guided session divided into seven 3-minute segments — one for each chakra. The binaural beat traces a bell curve: opening at 10 Hz mid-alpha, descending through the Schumann resonance (7.83 Hz) into 6.5 Hz theta at the heart centre, then rising back to alpha by the crown. Each segment fires the corresponding Solfeggio frequency tone at the start of its hold phase. The heart segment adds 432 Hz (universal harmony). The session opens with a long Om bell (111 Hz) and closes with an extended 963 Hz crown tone followed by a final Om. Ocean is enabled throughout. Find the <strong>Chakra Reset</strong> button in the Brainwave Presets section.</p>
@@ -2211,6 +2242,7 @@ const CH = {
   noise:    { vol: 0.2,  enabled: false, pan: 0, type: 'pink' },
   ocean:   { vol: 0.65, enabled: false, pan: 0, wavePeriod: 20, hissFreq: 1800, hissGain: 0.10 },
   ambient:  { vol: 0.5,  enabled: false, pan: 0 },
+  bass:     { vol: 0.25, enabled: false, pan: 0, freq: 40 },
   iso:      { vol: 0.4,  enabled: false, pan: 0, beat: 10, carrier: 174 },
   tones:    { vol: 0.45, enabled: true,  pan: 0 },
 };
@@ -2233,6 +2265,9 @@ let oceanProcNodes = null;
 let ambientChGain = null, ambientPan = null;
 let ambientFileSource = null, ambientFileBuffer = null;
 
+// Sub-bass channel
+let bassChGain = null, bassPan = null, bassOsc = null;
+
 // Iso nodes
 let isoOsc = null, isoGain = null, isoSchedulerInterval = null;
 let isoNextPulseTime = 0;
@@ -2246,16 +2281,20 @@ let reverbNode    = null;  // ConvolverNode
 let reverbEnabled = false;
 
 // Carrier drift nodes
-let driftLfo     = null;
-let driftGain    = null;
-let driftEnabled = false;
-const DRIFT_RATE = 0.007;  // Hz — ~143 s cycle
-const DRIFT_DEPTH = 8;     // ± Hz
+let driftLfo       = null;
+let driftGain      = null;
+let driftEnabled   = false;
+let driftStartTime = null;
+const DRIFT_RATE  = 0.007;  // Hz — ~143 s cycle
+const DRIFT_DEPTH = 8;      // ± Hz
 
 // Beat frequency drift nodes
-let beatDriftLfo     = null;
-let beatDriftGain    = null;
-let beatDriftEnabled = false;
+let beatDriftLfo       = null;
+let beatDriftGain      = null;
+let beatDriftEnabled   = false;
+let beatDriftStartTime = null;
+
+let _driftDisplayInterval = null;
 const BEAT_DRIFT_RATE  = 1 / 300;  // Hz — 300 s (5 min) cycle
 const BEAT_DRIFT_DEPTH = 0.3;      // ± Hz
 
@@ -2374,6 +2413,7 @@ function startDrift() {
   driftGain.connect(leftOsc.frequency);
   driftGain.connect(rightOsc.frequency);
   driftLfo.start();
+  driftStartTime = audioCtx.currentTime;
 }
 
 function stopDrift() {
@@ -2382,7 +2422,7 @@ function stopDrift() {
     if (driftGain && leftOsc)  try { driftGain.disconnect(leftOsc.frequency);  } catch(e) {}
     if (driftGain && rightOsc) try { driftGain.disconnect(rightOsc.frequency); } catch(e) {}
   }
-  driftLfo = null; driftGain = null;
+  driftLfo = null; driftGain = null; driftStartTime = null;
 }
 
 function toggleTheme() {
@@ -2428,6 +2468,7 @@ function startBeatDrift() {
   beatDriftLfo.connect(beatDriftGain);
   beatDriftGain.connect(rightOsc.frequency);
   beatDriftLfo.start();
+  beatDriftStartTime = audioCtx.currentTime;
 }
 
 function stopBeatDrift() {
@@ -2435,7 +2476,7 @@ function stopBeatDrift() {
     try { beatDriftLfo.stop(); } catch(e) {}
     if (beatDriftGain && rightOsc) try { beatDriftGain.disconnect(rightOsc.frequency); } catch(e) {}
   }
-  beatDriftLfo = null; beatDriftGain = null;
+  beatDriftLfo = null; beatDriftGain = null; beatDriftStartTime = null;
 }
 
 function toggleBeatDrift(enabled) {
@@ -2483,6 +2524,7 @@ function initAudio() {
   noiseChGain    = audioCtx.createGain();
   oceanChGain   = audioCtx.createGain();
   ambientChGain  = audioCtx.createGain();
+  bassChGain     = audioCtx.createGain();
   isoChGain      = audioCtx.createGain();
   tonesChGain    = audioCtx.createGain();
 
@@ -2490,6 +2532,7 @@ function initAudio() {
   noiseChGain.gain.value    = CH.noise.vol;
   oceanChGain.gain.value   = CH.ocean.vol;
   ambientChGain.gain.value  = CH.ambient.vol;
+  bassChGain.gain.value     = CH.bass.vol;
   isoChGain.gain.value      = CH.iso.vol;
   tonesChGain.gain.value    = CH.tones.vol;
 
@@ -2497,12 +2540,14 @@ function initAudio() {
   noisePan   = audioCtx.createStereoPanner();
   oceanPan  = audioCtx.createStereoPanner();
   ambientPan = audioCtx.createStereoPanner();
+  bassPan    = audioCtx.createStereoPanner();
   isoPan     = audioCtx.createStereoPanner();
   tonesPan   = audioCtx.createStereoPanner();
 
   noisePan.pan.value   = CH.noise.pan;
   oceanPan.pan.value  = CH.ocean.pan;
   ambientPan.pan.value = CH.ambient.pan;
+  bassPan.pan.value    = CH.bass.pan;
   isoPan.pan.value     = CH.iso.pan;
   tonesPan.pan.value   = CH.tones.pan;
 
@@ -2510,6 +2555,7 @@ function initAudio() {
   noisePan.connect(noiseChGain);     noiseChGain.connect(masterGain);
   oceanPan.connect(oceanChGain);   oceanChGain.connect(masterGain);
   ambientPan.connect(ambientChGain); ambientChGain.connect(masterGain);
+  bassPan.connect(bassChGain);       bassChGain.connect(masterGain);
   isoPan.connect(isoChGain);         isoChGain.connect(masterGain);
   tonesPan.connect(tonesChGain);     tonesChGain.connect(masterGain);
   binauralChGain.connect(masterGain);
@@ -2522,8 +2568,13 @@ function startAudio() {
   if (CH.noise.enabled)    startNoise();
   if (CH.ocean.enabled)   startOcean();
   if (CH.ambient.enabled)  startAmbient();
+  if (CH.bass.enabled)     startBass();
   if (CH.iso.enabled)      startIsochronic();
-  // tones: on-demand / auto-scheduled
+  // Tones: on-demand. Restart any active auto-play chains that were halted on last stop.
+  Object.keys(toneAuto).forEach(hz => {
+    const cfg = toneAuto[hz];
+    if (cfg.enabled && !cfg.timerId) scheduleToneAutoNext(hz);
+  });
 
   // Fade in
   masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
@@ -2531,6 +2582,7 @@ function startAudio() {
   masterGain.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + FADE_IN_SECS);
 
   startSessionTimer();
+  _startDriftDisplay();
 }
 
 function stopAudio(immediate) {
@@ -2552,11 +2604,13 @@ function stopAudio(immediate) {
 }
 
 function _hardStop() {
+  _stopDriftDisplay();
   stopBinaural();
   stopIsochronic();
   stopNoise();
   stopOcean();
   stopAmbient();
+  stopBass();
   sessionFadingOut = false;
   // Restore gain for next play
   if (masterGain && audioCtx) {
@@ -3020,7 +3074,68 @@ function loadAmbientFile(file) {
   reader.readAsArrayBuffer(file);
 }
 
+// ── Sub-bass channel ──────────────────────────────────
+
+function startBass() {
+  stopBass();
+  bassOsc = audioCtx.createOscillator();
+  bassOsc.type = 'sine';
+  bassOsc.frequency.value = CH.bass.freq;
+  bassOsc.connect(bassPan);
+  bassOsc.start();
+}
+
+function stopBass() {
+  if (bassOsc) { try { bassOsc.stop(); } catch(e) {} bassOsc = null; }
+}
+
+function updateBassFreq(hz) {
+  CH.bass.freq = parseFloat(hz);
+  if (bassOsc && audioCtx) bassOsc.frequency.setTargetAtTime(CH.bass.freq, audioCtx.currentTime, 0.05);
+  const valEl = document.getElementById('val-ch-bass-freq');
+  if (valEl) valEl.textContent = CH.bass.freq + ' Hz';
+}
+
 // ── Tones (ADSR) ──────────────────────────────────────
+
+// Stereo detune: ±1.5 cents (ratio = 2^(1.5/1200))
+const TONE_DETUNE_CENTS = 1.5;
+const TONE_STEREO_PAN   = 0.65;
+
+// Shared helper: schedule a stereo-detuned ADSR tone pair at a given AudioContext time.
+// Returns the pair of OscillatorNodes (for scheduling/cancellation tracking).
+function _buildToneOscs(hz, t, adsr, stopSlop) {
+  const { attack, decay, sustain, release, hold } = adsr;
+  const dur     = attack + decay + hold + release;
+  const ratio   = Math.pow(2, TONE_DETUNE_CENTS / 1200);
+
+  // Shared ADSR envelope
+  const env = audioCtx.createGain();
+  env.gain.setValueAtTime(0, t);
+  env.gain.linearRampToValueAtTime(1,       t + attack);
+  env.gain.linearRampToValueAtTime(sustain, t + attack + decay);
+  env.gain.setValueAtTime(sustain,          t + attack + decay + hold);
+  env.gain.linearRampToValueAtTime(0,       t + attack + decay + hold + release);
+
+  if (reverbEnabled) { initReverb(); env.connect(reverbNode); }
+
+  const oscs = [];
+  [[-1, hz / ratio], [1, hz * ratio]].forEach(([side, freq]) => {
+    const osc  = audioCtx.createOscillator();
+    const pan  = audioCtx.createStereoPanner();
+    osc.type             = 'sine';
+    osc.frequency.value  = freq;
+    pan.pan.value        = side * TONE_STEREO_PAN;
+    osc.connect(pan);
+    pan.connect(env);
+    osc.start(t);
+    osc.stop(t + dur + stopSlop);
+    oscs.push(osc);
+  });
+
+  env.connect(tonesPan);
+  return { oscs, dur };
+}
 
 function fireTone(hz) {
   initAudio();
@@ -3030,26 +3145,10 @@ function fireTone(hz) {
   // operations to stay in the synchronous call stack of the user gesture.
   if (audioCtx.state === 'suspended') audioCtx.resume();
 
-  const { attack, decay, sustain, release, hold } = TONE_ADSR;
-  const dur = attack + decay + hold + release;
-  const osc = audioCtx.createOscillator();
-  const env = audioCtx.createGain();
-  osc.type = 'sine';
-  osc.frequency.value = hz;
-
   // Schedule slightly ahead so the tone fires after any pending resume completes
-  const now = audioCtx.currentTime + 0.08;
-  env.gain.setValueAtTime(0, now);
-  env.gain.linearRampToValueAtTime(1,       now + attack);
-  env.gain.linearRampToValueAtTime(sustain, now + attack + decay);
-  env.gain.setValueAtTime(sustain,          now + attack + decay + hold);
-  env.gain.linearRampToValueAtTime(0,       now + attack + decay + hold + release);
-
-  osc.connect(env);
-  env.connect(tonesPan);
-  if (reverbEnabled) { initReverb(); env.connect(reverbNode); }
-  osc.start(now);
-  osc.stop(now + dur + 0.2);
+  const now  = audioCtx.currentTime + 0.08;
+  const adsr = TONE_ADSR;
+  const { dur } = _buildToneOscs(hz, now, adsr, 0.2);
   markTonePlaying(hz, dur);
 
   // Re-suspend the AudioContext after this tone finishes if no session is playing.
@@ -3067,28 +3166,12 @@ function fireTone(hz) {
 function fireToneAt(hz, absCtxTime, adsrOverride) {
   if (!tonesPan) return;
   const adsr = adsrOverride ? Object.assign({}, TONE_ADSR, adsrOverride) : TONE_ADSR;
-  const { attack, decay, sustain, release, hold } = adsr;
-  const dur = attack + decay + hold + release;
-  const osc = audioCtx.createOscillator();
-  const env = audioCtx.createGain();
-  osc.type = 'sine';
-  osc.frequency.value = hz;
+  const { oscs, dur } = _buildToneOscs(hz, absCtxTime, adsr, 0.1);
 
-  const t = absCtxTime;
-  env.gain.setValueAtTime(0, t);
-  env.gain.linearRampToValueAtTime(1,       t + attack);
-  env.gain.linearRampToValueAtTime(sustain, t + attack + decay);
-  env.gain.setValueAtTime(sustain,          t + attack + decay + hold);
-  env.gain.linearRampToValueAtTime(0,       t + attack + decay + hold + release);
-
-  osc.connect(env);
-  env.connect(tonesPan);
-  if (reverbEnabled) { initReverb(); env.connect(reverbNode); }
-  osc.start(t);
-  osc.stop(t + dur + 0.1);
-
-  _scheduledToneOscs.push(osc);
-  osc.onended = () => { _scheduledToneOscs = _scheduledToneOscs.filter(o => o !== osc); };
+  oscs.forEach(osc => {
+    _scheduledToneOscs.push(osc);
+    osc.onended = () => { _scheduledToneOscs = _scheduledToneOscs.filter(o => o !== osc); };
+  });
 }
 
 function cancelScheduledTones() {
@@ -3119,7 +3202,10 @@ function scheduleToneAutoNext(hz) {
     // Suppress auto-play while a sequence is running — sequence cues are deterministic;
     // random auto-play on top causes unexpected re-triggering.
     if (isPlaying && CH.tones.enabled && !seqEnabled) fireTone(hz === 'custom' ? customToneHz : hz);
-    scheduleToneAutoNext(hz);
+    // Only reschedule while audio is playing — prevents the chain from running indefinitely
+    // in the background. startAudio() restarts all active auto-play timers.
+    if (isPlaying) scheduleToneAutoNext(hz);
+    else cfg.timerId = null;
   }, delay);
 }
 
@@ -3259,6 +3345,16 @@ function _updateBeatPulse() {
   document.documentElement.style.setProperty('--beat-period', (1 / beatFreq).toFixed(4) + 's');
 }
 
+function _startDriftDisplay() {
+  if (_driftDisplayInterval) return;
+  _driftDisplayInterval = setInterval(updateInfoBar, 500);
+}
+
+function _stopDriftDisplay() {
+  clearInterval(_driftDisplayInterval);
+  _driftDisplayInterval = null;
+}
+
 function updateBeat(v) {
   beatFreq = parseFloat(v);
   document.getElementById('val-beat').value = beatFreq.toFixed(1);
@@ -3341,17 +3437,27 @@ function updateInfoBar() {
     return;
   }
 
-  bEl.textContent = beatFreq.toFixed(1);
-
   if (CH.binaural.enabled) {
-    lEl.textContent = carrierFreq.toFixed(0);
-    rEl.textContent = (carrierFreq + beatFreq).toFixed(1);
-    fEl.textContent = carrierFreq + ' Hz / ' + (carrierFreq + beatFreq).toFixed(1) + ' Hz';
+    const now = audioCtx ? audioCtx.currentTime : 0;
+    let liveCarrier = carrierFreq;
+    let liveBeat    = beatFreq;
+    if (driftEnabled && driftStartTime != null) {
+      liveCarrier += DRIFT_DEPTH * Math.sin(2 * Math.PI * DRIFT_RATE * (now - driftStartTime));
+    }
+    if (beatDriftEnabled && beatDriftStartTime != null) {
+      liveBeat += BEAT_DRIFT_DEPTH * Math.sin(2 * Math.PI * BEAT_DRIFT_RATE * (now - beatDriftStartTime));
+    }
+    bEl.textContent = liveBeat.toFixed(2);
+    lEl.textContent = liveCarrier.toFixed(1);
+    rEl.textContent = (liveCarrier + liveBeat).toFixed(1);
+    fEl.textContent = liveCarrier.toFixed(1) + ' Hz / ' + (liveCarrier + liveBeat).toFixed(1) + ' Hz';
   } else if (CH.iso.enabled) {
+    bEl.textContent = CH.iso.beat.toFixed(1);
     lEl.textContent = CH.iso.carrier.toFixed(0);
     rEl.textContent = CH.iso.carrier.toFixed(0);
     fEl.textContent = CH.iso.carrier + ' Hz @ ' + CH.iso.beat.toFixed(1) + ' Hz pulse';
   } else {
+    bEl.textContent = '—';
     lEl.textContent = '—';
     rEl.textContent = '—';
     fEl.textContent = '—';
@@ -3375,15 +3481,15 @@ function toggleChannel(ch) {
       if      (ch === 'binaural') startBinaural();
       else if (ch === 'noise')    startNoise();
       else if (ch === 'ocean')    startOcean();
-      else if (ch === 'ocean')   startOcean();
       else if (ch === 'ambient')  startAmbient();
+      else if (ch === 'bass')     startBass();
       else if (ch === 'iso')      startIsochronic();
     } else {
       if      (ch === 'binaural') stopBinaural();
       else if (ch === 'noise')    stopNoise();
       else if (ch === 'ocean')    stopOcean();
-      else if (ch === 'ocean')   stopOcean();
       else if (ch === 'ambient')  stopAmbient();
+      else if (ch === 'bass')     stopBass();
       else if (ch === 'iso')      stopIsochronic();
       else if (ch === 'tones')    cancelScheduledTones();
     }
@@ -3398,14 +3504,14 @@ function updateChannelVol(ch, val) {
   if (valEl) valEl.textContent = pct;
   updateSliderFill('sl-ch-' + ch + '-vol', CH[ch].vol, 0, 1);
 
-  const gainMap = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ocean: oceanChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
+  const gainMap = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ambient: ambientChGain, bass: bassChGain, iso: isoChGain, tones: tonesChGain };
   const g = gainMap[ch];
   if (g && audioCtx) g.gain.linearRampToValueAtTime(CH[ch].vol, audioCtx.currentTime + 0.05);
 }
 
 function updateChannelPan(ch, val) {
   CH[ch].pan = parseFloat(val);
-  const panMap = { noise: noisePan, ocean: oceanPan, ocean: oceanPan, ambient: ambientPan, iso: isoPan, tones: tonesPan };
+  const panMap = { noise: noisePan, ocean: oceanPan, ambient: ambientPan, bass: bassPan, iso: isoPan, tones: tonesPan };
   const p = panMap[ch];
   if (p && audioCtx) p.pan.linearRampToValueAtTime(CH[ch].pan, audioCtx.currentTime + 0.05);
 }
@@ -3632,6 +3738,7 @@ function toggleSeq() {
     isPlaying = false;
     document.getElementById('power-btn').classList.remove('active');
     stopAudio();
+    _releaseWakeLock();
     updateInfoBar();
   }
 }
@@ -3888,7 +3995,7 @@ function updateSeqRunBtn(running) {
 // Used by startSequence() for step 0 and tickSequence() on step entry.
 function _applyStepChannelVols(step) {
   if (!step.channelVols) return;
-  const gainMap = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ocean: oceanChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
+  const gainMap = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ambient: ambientChGain, bass: bassChGain, iso: isoChGain, tones: tonesChGain };
   for (const [ch, vol] of Object.entries(step.channelVols)) {
     if (!CH[ch]) continue;
     const v = Math.max(0, Math.min(1, parseFloat(vol)));
@@ -3906,7 +4013,7 @@ function startSequence() {
   // Save current channel volumes/enabled so they can be restored when the sequence ends
   _seqSavedChVols = {};
   _seqSavedChEnabled = {};
-  ['binaural','noise','ocean','ocean','ambient','iso','tones'].forEach(ch => {
+  ['binaural','noise','ocean','ambient','bass','iso','tones'].forEach(ch => {
     _seqSavedChVols[ch]    = CH[ch].vol;
     _seqSavedChEnabled[ch] = CH[ch].enabled;
   });
@@ -3976,8 +4083,8 @@ function stopSequence() {
 
   // Restore channel volumes that tickSequence may have mutated via channelVols
   if (_seqSavedChVols) {
-    const gainNodes = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ocean: oceanChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
-    ['binaural','noise','ocean','ocean','ambient','iso','tones'].forEach(ch => {
+    const gainNodes = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ambient: ambientChGain, bass: bassChGain, iso: isoChGain, tones: tonesChGain };
+    ['binaural','noise','ocean','ambient','bass','iso','tones'].forEach(ch => {
       const vol = _seqSavedChVols[ch];
       CH[ch].vol = vol;
       if (gainNodes[ch]) gainNodes[ch].gain.value = vol;
@@ -3992,7 +4099,7 @@ function stopSequence() {
 
   // Restore channel enabled states that tickSequence may have changed via channelEnabled
   if (_seqSavedChEnabled) {
-    ['binaural','noise','ocean','ocean','ambient','iso','tones'].forEach(ch => {
+    ['binaural','noise','ocean','ambient','bass','iso','tones'].forEach(ch => {
       CH[ch].enabled = _seqSavedChEnabled[ch];
       const btn = document.getElementById('ch-toggle-' + ch);
       if (btn) { btn.classList.toggle('active', CH[ch].enabled); btn.textContent = CH[ch].enabled ? '●' : '○'; }
@@ -4067,6 +4174,7 @@ function tickSequence() {
       isPlaying = false;
       document.getElementById('power-btn').classList.remove('active');
       stopSequence();
+      _releaseWakeLock();
       updateInfoBar();
     }
   }
@@ -4102,9 +4210,9 @@ function captureMixerState() {
     toneAdsr:  { attack: TONE_ADSR.attack, decay: TONE_ADSR.decay, sustain: TONE_ADSR.sustain, hold: TONE_ADSR.hold, release: TONE_ADSR.release },
     binaural: { enabled: CH.binaural.enabled, vol: CH.binaural.vol },
     noise:    { enabled: CH.noise.enabled,    vol: CH.noise.vol,    pan: CH.noise.pan,  type: CH.noise.type },
-    ocean:    { enabled: CH.ocean.enabled,    vol: CH.ocean.vol,    pan: CH.ocean.pan },
     ocean:   { enabled: CH.ocean.enabled,   vol: CH.ocean.vol,   pan: CH.ocean.pan, wavePeriod: CH.ocean.wavePeriod, hissFreq: CH.ocean.hissFreq, hissGain: CH.ocean.hissGain },
     ambient:  { enabled: CH.ambient.enabled,  vol: CH.ambient.vol,  pan: CH.ambient.pan },
+    bass:     { enabled: CH.bass.enabled,     vol: CH.bass.vol,     pan: CH.bass.pan,   freq: CH.bass.freq },
     iso:      { enabled: CH.iso.enabled,      vol: CH.iso.vol,      pan: CH.iso.pan,    beat: CH.iso.beat, carrier: CH.iso.carrier },
     tones:    { enabled: CH.tones.enabled,    vol: CH.tones.vol,    pan: CH.tones.pan },
   };
@@ -4205,7 +4313,7 @@ function applyMixerState(mixer) {
   }
 
   // Channels
-  ['binaural', 'noise', 'ocean', 'ocean', 'ambient', 'iso', 'tones'].forEach(ch => {
+  ['binaural', 'noise', 'ocean', 'ambient', 'bass', 'iso', 'tones'].forEach(ch => {
     const m = mixer[ch];
     if (!m) return;
 
@@ -4217,7 +4325,7 @@ function applyMixerState(mixer) {
       const valEl = document.getElementById('val-ch-' + ch + '-vol');
       if (valEl) valEl.textContent = Math.round(CH[ch].vol * 100) + '%';
       updateSliderFill('sl-ch-' + ch + '-vol', CH[ch].vol, 0, 1);
-      const gainMap = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ocean: oceanChGain, ambient: ambientChGain, iso: isoChGain, tones: tonesChGain };
+      const gainMap = { binaural: binauralChGain, noise: noiseChGain, ocean: oceanChGain, ambient: ambientChGain, bass: bassChGain, iso: isoChGain, tones: tonesChGain };
       const g = gainMap[ch];
       if (g && audioCtx) g.gain.linearRampToValueAtTime(CH[ch].vol, audioCtx.currentTime + 0.05);
     }
@@ -4228,7 +4336,7 @@ function applyMixerState(mixer) {
       const sl = document.getElementById('sl-ch-' + ch + '-pan');
       if (sl) sl.value = CH[ch].pan;
       updateSliderFill('sl-ch-' + ch + '-pan', CH[ch].pan, -1, 1);
-      const panMap = { noise: noisePan, ocean: oceanPan, ocean: oceanPan, ambient: ambientPan, iso: isoPan, tones: tonesPan };
+      const panMap = { noise: noisePan, ocean: oceanPan, ambient: ambientPan, bass: bassPan, iso: isoPan, tones: tonesPan };
       const p = panMap[ch];
       if (p && audioCtx) p.pan.linearRampToValueAtTime(CH[ch].pan, audioCtx.currentTime + 0.05);
     }
@@ -4269,6 +4377,16 @@ function applyMixerState(mixer) {
       }
     }
 
+    // Bass-specific frequency control
+    if (ch === 'bass' && m.freq != null) {
+      CH.bass.freq = m.freq;
+      const sl = document.getElementById('sl-ch-bass-freq');
+      const el = document.getElementById('val-ch-bass-freq');
+      if (sl) sl.value = CH.bass.freq;
+      if (el) el.textContent = CH.bass.freq + ' Hz';
+      if (bassOsc && audioCtx) bassOsc.frequency.setTargetAtTime(CH.bass.freq, audioCtx.currentTime, 0.05);
+    }
+
     // Iso-specific frequency controls
     if (ch === 'iso') {
       if (m.beat != null) {
@@ -4301,13 +4419,15 @@ function applyMixerState(mixer) {
           if      (ch === 'binaural') startBinaural();
           else if (ch === 'noise')    startNoise();
           else if (ch === 'ocean')    startOcean();
-          else if (ch === 'ocean')   startOcean();
+          else if (ch === 'ambient')  startAmbient();
+          else if (ch === 'bass')     startBass();
           else if (ch === 'iso')      startIsochronic();
         } else {
           if      (ch === 'binaural') stopBinaural();
           else if (ch === 'noise')    stopNoise();
           else if (ch === 'ocean')    stopOcean();
-          else if (ch === 'ocean')   stopOcean();
+          else if (ch === 'ambient')  stopAmbient();
+          else if (ch === 'bass')     stopBass();
           else if (ch === 'iso')      stopIsochronic();
         }
       }
@@ -4325,8 +4445,8 @@ function _stepsWithMixerBaked() {
     binaural: CH.binaural.vol,
     noise:    CH.noise.vol,
     ocean:    CH.ocean.vol,
-    ocean:   CH.ocean.vol,
     ambient:  CH.ambient.vol,
+    bass:     CH.bass.vol,
     iso:      CH.iso.vol,
     tones:    CH.tones.vol,
   };
@@ -4577,6 +4697,7 @@ updateSliderFill('sl-ch-binaural-vol', CH.binaural.vol, 0, 1);
 updateSliderFill('sl-ch-noise-vol',    CH.noise.vol,    0, 1);
 updateSliderFill('sl-ch-ocean-vol',    CH.ocean.vol,    0, 1);
 updateSliderFill('sl-ch-ambient-vol',  CH.ambient.vol,  0, 1);
+updateSliderFill('sl-ch-bass-vol',     CH.bass.vol,     0, 1);
 updateSliderFill('sl-ch-iso-vol',      CH.iso.vol,      0, 1);
 updateSliderFill('sl-ch-tones-vol',    CH.tones.vol,    0, 1);
 
@@ -4680,6 +4801,29 @@ function _releaseWakeLock() {
 // Load persisted user programs and render featured program buttons
 initUserPrograms();
 renderFeaturedPrograms();
+
+// ── Keyboard Shortcuts ────────────────────────────────────────
+// Space = play/stop, ArrowUp/Down = ±0.5 Hz beat nudge
+// Ignored when an input/textarea/select is focused.
+
+document.addEventListener('keydown', e => {
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if (e.code === 'Space') {
+    e.preventDefault();
+    togglePlay();
+  } else if (e.code === 'ArrowUp') {
+    e.preventDefault();
+    const v = Math.min(100, parseFloat((beatFreq + 0.5).toFixed(1)));
+    document.getElementById('sl-beat').value = v;
+    updateBeat(v);
+  } else if (e.code === 'ArrowDown') {
+    e.preventDefault();
+    const v = Math.max(0.1, parseFloat((beatFreq - 0.5).toFixed(1)));
+    document.getElementById('sl-beat').value = v;
+    updateBeat(v);
+  }
+});
 
 // Auto-load sequence from ?seq=<url> or ?data=<base64> query parameter
 (function checkSeqParam() {
