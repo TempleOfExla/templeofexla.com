@@ -1602,6 +1602,10 @@ input[type=range]::-moz-range-thumb {
         onkeydown="if(event.key==='Enter')this.blur()">
       <span class="adsr-unit">s</span>
     </div>
+    <label class="option-label adsr-harmonics-label" title="Add octave and perfect fifth overtones">
+      <input type="checkbox" id="opt-harmonics" onchange="toggleToneHarmonics(this.checked)">
+      <span class="option-text">harmonics</span>
+    </label>
   </div>
   <div class="tone-palette" id="tone-palette"></div>
 
@@ -1889,7 +1893,7 @@ input[type=range]::-moz-range-thumb {
     <p class="info-body">Play 200 Hz in your left ear and 210 Hz in your right, and your brain perceives the 10 Hz <em>difference</em> as a slow pulse — and gradually synchronises to it. This is called the <strong>frequency-following response</strong>. Different beat frequencies correspond to different brain states: delta for deep sleep, theta for hypnagogic meditation, alpha for calm alertness, beta for active thinking. <strong>Headphones are essential</strong> — the stereo separation between ears is what creates the effect.</p>
 
     <h3 class="info-section">What you can do</h3>
-    <p class="info-body">Mix seven simultaneous audio layers: binaural beats, isochronic pulses (work without headphones), coloured noise, a procedural ocean soundscape, an ambient file player, a sub-bass sine tone (physical grounding; 40 Hz sits at the gamma boundary for ASSR stimulus), and sacred-frequency tones with configurable ADSR envelopes and stereo shimmer. Enable <strong>Carrier Drift</strong> or <strong>Beat Drift</strong> to slow-modulate the frequencies — the info bar shows the actual live values as they wander. Use the brainwave presets or build a custom <strong>Session Sequence</strong> that ramps through any frequency arc with timed tone cues. Share any sequence with the <strong>⧉ Link</strong> button. <strong>Space</strong> plays and stops; arrow keys nudge the beat frequency.</p>
+    <p class="info-body">Mix seven simultaneous audio layers: binaural beats, isochronic pulses (work without headphones), coloured noise, a procedural ocean soundscape, an ambient file player, a sub-bass sine tone (physical grounding; 40 Hz sits at the gamma boundary for ASSR stimulus), and sacred-frequency tones with configurable ADSR envelopes and stereo shimmer. Enable <strong>Harmonics</strong> in the tone row to add an octave and perfect fifth partial to every tone — always consonant, gives a singing-bowl quality. Enable <strong>Carrier Drift</strong> or <strong>Beat Drift</strong> to slow-modulate the frequencies — the info bar shows the actual live values as they wander. Use the brainwave presets or build a custom <strong>Session Sequence</strong> that ramps through any frequency arc with timed tone cues. Share any sequence with the <strong>⧉ Link</strong> button. <strong>Space</strong> plays and stops; arrow keys nudge the beat frequency.</p>
 
     <h3 class="info-section">Try: Chakra Reset ✦</h3>
     <p class="info-body">A 21-minute guided session divided into seven 3-minute segments — one for each chakra. The binaural beat traces a bell curve: opening at 10 Hz mid-alpha, descending through the Schumann resonance (7.83 Hz) into 6.5 Hz theta at the heart centre, then rising back to alpha by the crown. Each segment fires the corresponding Solfeggio frequency tone at the start of its hold phase. The heart segment adds 432 Hz (universal harmony). The session opens with a long Om bell (111 Hz) and closes with an extended 963 Hz crown tone followed by a final Om. Ocean is enabled throughout. Find the <strong>Chakra Reset</strong> button in the Brainwave Presets section.</p>
@@ -3102,6 +3106,10 @@ function updateBassFreq(hz) {
 const TONE_DETUNE_CENTS = 1.5;
 const TONE_STEREO_PAN   = 0.65;
 
+// Tone harmonics — add octave (×2) and/or perfect fifth (×1.5) as partials
+let toneHarmonicsEnabled = false;
+const TONE_HARMONIC_LEVELS = { octave: 0.35, fifth: 0.25 };
+
 // Shared helper: schedule a stereo-detuned ADSR tone pair at a given AudioContext time.
 // Returns the pair of OscillatorNodes (for scheduling/cancellation tracking).
 function _buildToneOscs(hz, t, adsr, stopSlop) {
@@ -3120,18 +3128,33 @@ function _buildToneOscs(hz, t, adsr, stopSlop) {
   if (reverbEnabled) { initReverb(); env.connect(reverbNode); }
 
   const oscs = [];
+
+  // Stereo-detuned fundamental pair
   [[-1, hz / ratio], [1, hz * ratio]].forEach(([side, freq]) => {
-    const osc  = audioCtx.createOscillator();
-    const pan  = audioCtx.createStereoPanner();
-    osc.type             = 'sine';
-    osc.frequency.value  = freq;
-    pan.pan.value        = side * TONE_STEREO_PAN;
-    osc.connect(pan);
-    pan.connect(env);
-    osc.start(t);
-    osc.stop(t + dur + stopSlop);
+    const osc = audioCtx.createOscillator();
+    const pan = audioCtx.createStereoPanner();
+    osc.type = 'sine'; osc.frequency.value = freq;
+    pan.pan.value = side * TONE_STEREO_PAN;
+    osc.connect(pan); pan.connect(env);
+    osc.start(t); osc.stop(t + dur + stopSlop);
     oscs.push(osc);
   });
+
+  // Harmonic overtones — octave (×2) and perfect fifth (×1.5), mono, attenuated
+  if (toneHarmonicsEnabled) {
+    [
+      [hz * 2,   TONE_HARMONIC_LEVELS.octave],
+      [hz * 1.5, TONE_HARMONIC_LEVELS.fifth ],
+    ].forEach(([freq, level]) => {
+      const osc      = audioCtx.createOscillator();
+      const levelGain = audioCtx.createGain();
+      osc.type = 'sine'; osc.frequency.value = freq;
+      levelGain.gain.value = level;
+      osc.connect(levelGain); levelGain.connect(env);
+      osc.start(t); osc.stop(t + dur + stopSlop);
+      oscs.push(osc);
+    });
+  }
 
   env.connect(tonesPan);
   return { oscs, dur };
@@ -3534,6 +3557,10 @@ function updateToneRelease(v) {
   TONE_ADSR.release = Math.max(0.1, parseFloat(v) || 6);
   const el = document.getElementById('adsr-release');
   if (el) el.value = TONE_ADSR.release;
+}
+
+function toggleToneHarmonics(enabled) {
+  toneHarmonicsEnabled = enabled;
 }
 
 function applyAdsrPreset(name) {
@@ -4206,6 +4233,7 @@ function captureMixerState() {
     driftEnabled,
     beatDriftEnabled,
     reverbEnabled,
+    toneHarmonicsEnabled,
     rampInEnabled, rampInDelta, rampInMins,
     toneAdsr:  { attack: TONE_ADSR.attack, decay: TONE_ADSR.decay, sustain: TONE_ADSR.sustain, hold: TONE_ADSR.hold, release: TONE_ADSR.release },
     binaural: { enabled: CH.binaural.enabled, vol: CH.binaural.vol },
@@ -4277,6 +4305,13 @@ function applyMixerState(mixer) {
     reverbEnabled = mixer.reverbEnabled;
     const cb = document.getElementById('opt-reverb');
     if (cb) cb.checked = reverbEnabled;
+  }
+
+  // Tone harmonics
+  if (mixer.toneHarmonicsEnabled != null) {
+    toneHarmonicsEnabled = mixer.toneHarmonicsEnabled;
+    const cb = document.getElementById('opt-harmonics');
+    if (cb) cb.checked = toneHarmonicsEnabled;
   }
 
   // Freq lead-in
