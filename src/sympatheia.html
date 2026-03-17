@@ -1067,6 +1067,25 @@ input[type=range]::-moz-range-thumb {
   color: var(--dim); letter-spacing: .05em;
 }
 
+/* Tone character selector (Pure / Warm / Bowl) */
+.tone-char-group {
+  display: flex; gap: 2px;
+  margin-left: auto;  /* push to right end of adsr-row */
+}
+.tone-char-btn {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: .12em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 2px;
+  border: 1px solid var(--border2);
+  background: transparent; color: var(--dim);
+  cursor: pointer; transition: all .15s;
+}
+.tone-char-btn:hover { color: var(--text); border-color: var(--text); }
+.tone-char-btn.active {
+  background: var(--cyan); color: var(--bg);
+  border-color: var(--cyan);
+}
+
 .tone-palette {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
@@ -1542,6 +1561,11 @@ input[type=range]::-moz-range-thumb {
       Freq Lead-in
       <span class="option-hint">start above target, ramp down</span>
     </label>
+    <label class="option-check">
+      <input type="checkbox" id="opt-session-bells" onchange="toggleSessionBells(this.checked)">
+      Session Bells
+      <span class="option-hint">3 strikes at start &amp; end</span>
+    </label>
   </div>
   <div class="rampin-row adsr-row" id="rampin-row" style="display:none">
     <span class="adsr-label">Lead-in</span>
@@ -1562,6 +1586,17 @@ input[type=range]::-moz-range-thumb {
         onblur="this.value=rampInMins"
         onkeydown="if(event.key==='Enter')this.blur()">
       <span class="adsr-unit">min</span>
+    </div>
+  </div>
+  <div class="rampin-row adsr-row" id="session-bells-row" style="display:none">
+    <span class="adsr-label">Bell Hz</span>
+    <div class="adsr-field">
+      <input type="number" class="iso-num-input adsr-input" id="session-bell-freq"
+        value="432" min="50" max="4000" step="1"
+        oninput="updateSessionBellFreq(this.value)"
+        onblur="this.value=sessionBellFreq"
+        onkeydown="if(event.key==='Enter')this.blur()">
+      <span class="adsr-unit">Hz</span>
     </div>
   </div>
 
@@ -1602,10 +1637,14 @@ input[type=range]::-moz-range-thumb {
         onkeydown="if(event.key==='Enter')this.blur()">
       <span class="adsr-unit">s</span>
     </div>
-    <label class="option-label adsr-harmonics-label" title="Add octave and perfect fifth overtones">
-      <input type="checkbox" id="opt-harmonics" onchange="toggleToneHarmonics(this.checked)">
-      <span class="option-text">harmonics</span>
-    </label>
+    <div class="tone-char-group">
+      <button class="tone-char-btn active" data-char="pure"
+        onclick="setToneCharacter('pure')" title="Stereo-detuned sine — clean, pure">Pure</button>
+      <button class="tone-char-btn" data-char="warm"
+        onclick="setToneCharacter('warm')" title="Add harmonic overtones (octave + fifth)">Warm</button>
+      <button class="tone-char-btn" data-char="bowl"
+        onclick="setToneCharacter('bowl')" title="Tibetan singing bowl — inharmonic modes, acoustic beating">Bowl</button>
+    </div>
   </div>
   <div class="tone-palette" id="tone-palette"></div>
 
@@ -1650,6 +1689,7 @@ input[type=range]::-moz-range-thumb {
             <input type="range" id="sl-ch-noise-pan" min="-1" max="1" step="0.05" value="0"
               oninput="updateChannelPan('noise',this.value)">
           </div>
+          <span class="layer-val" id="val-ch-noise-pan">C</span>
         </div>
         <select class="layer-select" id="noise-type-sel" onchange="setNoiseType(this.value)">
           <option value="white">white</option>
@@ -1678,6 +1718,7 @@ input[type=range]::-moz-range-thumb {
             <input type="range" id="sl-ch-ocean-pan" min="-1" max="1" step="0.05" value="0"
               oninput="updateChannelPan('ocean',this.value)">
           </div>
+          <span class="layer-val" id="val-ch-ocean-pan">C</span>
         </div>
         <div class="layer-slider-group">
           <span class="layer-slider-label">period</span>
@@ -1725,6 +1766,7 @@ input[type=range]::-moz-range-thumb {
             <input type="range" id="sl-ch-ambient-pan" min="-1" max="1" step="0.05" value="0"
               oninput="updateChannelPan('ambient',this.value)">
           </div>
+          <span class="layer-val" id="val-ch-ambient-pan">C</span>
         </div>
         <label class="layer-file-btn">
           <input type="file" id="ambient-file" accept="audio/*" style="display:none"
@@ -1753,6 +1795,7 @@ input[type=range]::-moz-range-thumb {
             <input type="range" id="sl-ch-bass-pan" min="-1" max="1" step="0.05" value="0"
               oninput="updateChannelPan('bass',this.value)">
           </div>
+          <span class="layer-val" id="val-ch-bass-pan">C</span>
         </div>
         <div class="layer-slider-group">
           <span class="layer-slider-label">hz</span>
@@ -1784,6 +1827,7 @@ input[type=range]::-moz-range-thumb {
             <input type="range" id="sl-ch-iso-pan" min="-1" max="1" step="0.05" value="0"
               oninput="updateChannelPan('iso',this.value)">
           </div>
+          <span class="layer-val" id="val-ch-iso-pan">C</span>
         </div>
         <div class="iso-num-group">
           <span class="layer-slider-label">hz</span>
@@ -1823,6 +1867,7 @@ input[type=range]::-moz-range-thumb {
             <input type="range" id="sl-ch-tones-pan" min="-1" max="1" step="0.05" value="0"
               oninput="updateChannelPan('tones',this.value)">
           </div>
+          <span class="layer-val" id="val-ch-tones-pan">C</span>
         </div>
       </div>
     </div>
@@ -2163,6 +2208,122 @@ const BUILT_IN_PROGRAMS = [
         toneCues:[ { hz:285, atSecs:10 }, { hz:174, atSecs:200 } ] },
     ] },
 
+  // ── Chakra Bowl (28 min, bowl tones, 4 min per chakra) ───────────
+  //
+  // Deeper, longer sibling of Chakra Reset.
+  // Bowl character: inharmonic modes + per-mode decay → the tone thins naturally to pure
+  // fundamental over the hold, then the next bell re-introduces the upper partials.
+  //
+  // Per-step structure (steps 2–7, 60 s ramp + 180 s hold = 240 s):
+  //   t=5   bowl drone — starts during ramp, blooms in 12 s, holds 160 s, releases 30 s
+  //   t=65  arrival bell — 5 s after ramp completes, marks the new chakra
+  //   t=80  swell bloom — 10 s attack to a bright accent over the settled drone
+  //   t=155 midpoint bell — quiet marker at the centre of the hold
+  //
+  // Step 1 (Root, no ramp):
+  //   t=15     bowl drone
+  //   t=35     swell bloom
+  //   t=120    midpoint bell
+  //
+  // Opening / closing bells: use the Session Bells feature (opt-session-bells checkbox).
+  //
+  // Frequency arc: identical to Chakra Reset — alpha entry, Schumann at solar plexus
+  // and throat, theta low-point at heart, integrated alpha at crown.
+  //
+  // Total: 7 × 240 s = 1680 s = 28 min.
+
+  { name: 'Chakra Bowl',
+    desc: '28 min · Seven chakras · Singing bowl tones · Drone + swell + bell per chakra · Enable Session Bells for opening/close',
+    mixer: {
+      masterVol: 0.25, waveType: 'sine', isoDuty: 0.5,
+      driftEnabled: false, beatDriftEnabled: false, reverbEnabled: true,
+      toneCharacter: 'bowl',
+      rampInEnabled: false, sessionBellEnabled: true, sessionBellFreq: 432,
+      binaural: { enabled: true,  vol: 0.20 },
+      noise:    { enabled: false, vol: 0.05, pan: 0,    type: 'pink' },
+      ocean:    { enabled: true,  vol: 0.78, pan: 0,    wavePeriod: 30, hissFreq: 1800, hissGain: 0.10 },
+      ambient:  { enabled: false, vol: 0.5,  pan: 0 },
+      bass:     { enabled: true,  vol: 0.18, pan: 0,    freq: 40 },
+      iso:      { enabled: false, vol: 0.4,  pan: 0,    beat: 10, carrier: 174 },
+      tones:    { enabled: true,  vol: 0.20, pan: -0.6 },
+    },
+    steps: [
+      { // 1 — Root — Muladhara — 396 Hz — 10 Hz alpha
+        beat: 10.0, carrier: 174, rampSecs: 0, holdSecs: 240,
+        channelVols: { binaural: 0.20, noise: 0, ocean: 0.78, bass: 0.18, tones: 0.20 },
+        toneCues: [
+          // Root bowl drone — blooms in 12 s, holds 160 s, releases through the rest of the step
+          { hz: 396, atSecs: 15, adsr: { attack: 12, hold: 160, release: 30 } },
+          // Swell bloom — bright accent once drone is established
+          { hz: 396, atSecs: 35, adsr: { attack: 10, hold:  30, release: 15 } },
+          // Midpoint marking bell
+          { hz: 396, atSecs: 120, adsr: { attack: 0.01, decay: 2, hold: 0, release: 8 } },
+        ],
+      },
+      { // 2 — Sacral — Svadhisthana — 417 Hz — 8.5 Hz low-alpha
+        beat: 8.5, carrier: 196, rampSecs: 60, holdSecs: 180,
+        toneCues: [
+          { hz: 417, atSecs:  5, adsr: { attack: 12, hold: 160, release: 30 } },
+          { hz: 417, atSecs: 65, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
+          { hz: 417, atSecs: 80, adsr: { attack: 10, hold:  25, release: 12 } },
+          { hz: 417, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
+        ],
+      },
+      { // 3 — Solar Plexus — Manipura — 528 Hz — 7.83 Hz Schumann
+        beat: 7.83, carrier: 210, rampSecs: 60, holdSecs: 180,
+        toneCues: [
+          { hz: 528, atSecs:  5, adsr: { attack: 12, hold: 160, release: 30 } },
+          { hz: 528, atSecs: 65, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
+          { hz: 528, atSecs: 80, adsr: { attack: 10, hold:  25, release: 12 } },
+          { hz: 528, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
+        ],
+      },
+      { // 4 — Heart — Anahata — 639 Hz — 6.5 Hz theta (deepest point of arc)
+        beat: 6.5, carrier: 228, rampSecs: 60, holdSecs: 180,
+        channelVols: { ocean: 0.90 }, // ocean swells at the heart centre
+        toneCues: [
+          { hz: 639, atSecs:  5, adsr: { attack: 12, hold: 160, release: 30 } },
+          { hz: 639, atSecs: 65, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
+          // Slightly longer swell at the deepest point
+          { hz: 639, atSecs: 80, adsr: { attack: 10, hold:  30, release: 15 } },
+          // 432 Hz Cosmos alongside the heart — universal harmony at the centre
+          { hz: 432, atSecs: 140, adsr: { attack: 10, hold:  25, release: 15 } },
+          { hz: 639, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
+        ],
+      },
+      { // 5 — Throat — Vishuddha — 741 Hz — 7.83 Hz Schumann
+        beat: 7.83, carrier: 210, rampSecs: 60, holdSecs: 180,
+        toneCues: [
+          { hz: 741, atSecs:  5, adsr: { attack: 12, hold: 160, release: 30 } },
+          { hz: 741, atSecs: 65, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
+          { hz: 741, atSecs: 80, adsr: { attack: 10, hold:  25, release: 12 } },
+          { hz: 741, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
+        ],
+      },
+      { // 6 — Third Eye — Ajna — 852 Hz — 8.5 Hz low-alpha
+        beat: 8.5, carrier: 196, rampSecs: 60, holdSecs: 180,
+        toneCues: [
+          { hz: 852, atSecs:  5, adsr: { attack: 12, hold: 160, release: 30 } },
+          { hz: 852, atSecs: 65, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
+          { hz: 852, atSecs: 80, adsr: { attack: 10, hold:  25, release: 12 } },
+          { hz: 852, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
+        ],
+      },
+      { // 7 — Crown — Sahasrara — 963 Hz — 10.5 Hz alpha
+        beat: 10.5, carrier: 174, rampSecs: 60, holdSecs: 180,
+        channelVols: { ocean: 0.62 }, // soften ocean for the closing ascent
+        toneCues: [
+          { hz: 963, atSecs:  5, adsr: { attack: 12, hold: 160, release: 30 } },
+          { hz: 963, atSecs: 65, adsr: { attack: 0.01, decay: 2, hold: 0, release:  7 } },
+          // Long crown swell — builds slowly through the mid-hold
+          { hz: 963, atSecs: 85, adsr: { attack: 15, hold:  35, release: 20 } },
+          // Midpoint bell
+          { hz: 963, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release:  7 } },
+        ],
+      },
+    ],
+  },
+
   // featured: true  →  rendered as a button in the preset strip.
   // featuredDesc     →  short tagline shown on the button (optional).
   { name: 'Chakra Reset',
@@ -2307,6 +2468,11 @@ let rampInEnabled = false;
 let rampInDelta   = 6;   // Hz above target beat to start
 let rampInMins    = 3;   // minutes to ramp down to target
 
+// Session bell signal — 3 strikes at start and end of session
+let sessionBellEnabled = false;
+let sessionBellFreq    = 432;
+const SESSION_BELL_ADSR = { attack: 0.01, decay: 1.5, sustain: 0.15, hold: 0, release: 3 };
+
 // Tone auto-play state
 const toneAuto = {};
 const TONE_ADSR = { attack: 4, decay: 0.5, sustain: 0.75, hold: 2, release: 6 };
@@ -2321,6 +2487,8 @@ const ADSR_PRESETS = {
 
 // Track oscillators scheduled by fireToneAt so they can be cancelled on stop/disable
 let _scheduledToneOscs = [];
+// Track oscillators scheduled by _fireBell so they can be cancelled on stop
+let _scheduledBellOscs = [];
 // Count of manually-fired tones still within their envelope (used to re-suspend
 // the AudioContext after all tones finish when no session is playing)
 let _activeToneCount = 0;
@@ -2585,6 +2753,14 @@ function startAudio() {
   masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
   masterGain.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + FADE_IN_SECS);
 
+  // Session start bells — fire after fade-in so they don't compete with the ramp
+  if (sessionBellEnabled) {
+    const bellT = audioCtx.currentTime + FADE_IN_SECS + 0.2;
+    _fireBell(sessionBellFreq, bellT);
+    _fireBell(sessionBellFreq, bellT + 2);
+    _fireBell(sessionBellFreq, bellT + 4);
+  }
+
   startSessionTimer();
   _startDriftDisplay();
 }
@@ -2609,6 +2785,7 @@ function stopAudio(immediate) {
 
 function _hardStop() {
   _stopDriftDisplay();
+  _cancelBells();
   stopBinaural();
   stopIsochronic();
   stopNoise();
@@ -2659,9 +2836,22 @@ function startSessionTimer() {
       // Session complete — stop for real
       isPlaying = false;
       document.getElementById('power-btn').classList.remove('active');
+      clearInterval(seqTickInterval); seqTickInterval = null;
       if (seqEnabled) stopSequence();
-      stopAudio(true);  // immediate (fade already done)
-      _releaseWakeLock();
+      stopSessionTimer();
+
+      if (sessionBellEnabled && audioCtx) {
+        // Fire 3 end bells (direct to destination — masterGain is already at 0),
+        // then hard-stop the engine after the last bell finishes.
+        const bellDur  = SESSION_BELL_ADSR.attack + SESSION_BELL_ADSR.decay +
+                         SESSION_BELL_ADSR.hold   + SESSION_BELL_ADSR.release;
+        const endDelay = (4 + bellDur + 0.5) * 1000;  // 3 bells + gaps + tail
+        playSessionBells();
+        setTimeout(() => { _hardStop(); _releaseWakeLock(); }, endDelay);
+      } else {
+        _hardStop();
+        _releaseWakeLock();
+      }
       updateInfoBar();
     }
   }, 1000);
@@ -3106,16 +3296,34 @@ function updateBassFreq(hz) {
 const TONE_DETUNE_CENTS = 1.5;
 const TONE_STEREO_PAN   = 0.65;
 
-// Tone harmonics — add octave (×2) and/or perfect fifth (×1.5) as partials
-let toneHarmonicsEnabled = false;
+// Tone character: 'pure' | 'warm' | 'bowl'
+//   pure — stereo-detuned sine pair only
+//   warm — pure + harmonic overtones (octave ×0.35, fifth ×0.25)
+//   bowl — Tibetan singing bowl simulation (inharmonic modes, per-mode beating & decay)
+let toneCharacter = 'pure';
 const TONE_HARMONIC_LEVELS = { octave: 0.35, fifth: 0.25 };
 
+// Tibetan singing bowl modal parameters.
+// Columns: [freqRatio, amplitude, beatHz, holdFactor, releaseFactor]
+//   freqRatio  — modal frequency as multiple of fundamental (NOT harmonic)
+//   amplitude  — relative level of this mode vs the fundamental
+//   beatHz     — degenerate sub-mode interference rate; sub-rhythmic so it never entrains
+//   holdFactor / releaseFactor — scale the ADSR hold/release for this mode (higher
+//                modes radiate energy faster, producing the "purifying" tail)
+const BOWL_MODES = [
+  [1.000, 1.00, 0.50, 1.00, 1.00],  // fundamental      [2,0] Chladni mode
+  [2.756, 0.35, 0.80, 0.60, 0.50],  // 1st overtone     [3,0] mode — inharmonic
+  [5.404, 0.12, 1.20, 0.30, 0.28],  // 2nd overtone     [4,0] mode — faster decay
+];
+
 // Shared helper: schedule a stereo-detuned ADSR tone pair at a given AudioContext time.
-// Returns the pair of OscillatorNodes (for scheduling/cancellation tracking).
+// Dispatches to _buildBowlOscs() when toneCharacter === 'bowl'.
 function _buildToneOscs(hz, t, adsr, stopSlop) {
+  if (toneCharacter === 'bowl') return _buildBowlOscs(hz, t, adsr, stopSlop);
+
   const { attack, decay, sustain, release, hold } = adsr;
-  const dur     = attack + decay + hold + release;
-  const ratio   = Math.pow(2, TONE_DETUNE_CENTS / 1200);
+  const dur   = attack + decay + hold + release;
+  const ratio = Math.pow(2, TONE_DETUNE_CENTS / 1200);
 
   // Shared ADSR envelope
   const env = audioCtx.createGain();
@@ -3140,13 +3348,13 @@ function _buildToneOscs(hz, t, adsr, stopSlop) {
     oscs.push(osc);
   });
 
-  // Harmonic overtones — octave (×2) and perfect fifth (×1.5), mono, attenuated
-  if (toneHarmonicsEnabled) {
+  // Warm mode: harmonic overtones (octave ×0.35, perfect fifth ×0.25)
+  if (toneCharacter === 'warm') {
     [
       [hz * 2,   TONE_HARMONIC_LEVELS.octave],
       [hz * 1.5, TONE_HARMONIC_LEVELS.fifth ],
     ].forEach(([freq, level]) => {
-      const osc      = audioCtx.createOscillator();
+      const osc       = audioCtx.createOscillator();
       const levelGain = audioCtx.createGain();
       osc.type = 'sine'; osc.frequency.value = freq;
       levelGain.gain.value = level;
@@ -3158,6 +3366,60 @@ function _buildToneOscs(hz, t, adsr, stopSlop) {
 
   env.connect(tonesPan);
   return { oscs, dur };
+}
+
+// Tibetan singing bowl simulation.
+// Each vibrational mode has its own ADSR envelope (shared attack/decay, mode-scaled
+// hold/release) and two oscillators at (freq ± beatHz/2) whose natural interference
+// produces the slow acoustic beat — no LFO required.
+function _buildBowlOscs(hz, t, adsr, stopSlop) {
+  const { attack, decay, sustain, hold, release } = adsr;
+  const allOscs = [];
+
+  BOWL_MODES.forEach(([freqRatio, amp, beatHz, holdFactor, relFactor]) => {
+    const partialHz = hz * freqRatio;
+    const modeHold  = hold  * holdFactor;
+    const modeRel   = release * relFactor;
+    const modeDur   = attack + decay + modeHold + modeRel;
+
+    // Per-mode envelope
+    const env = audioCtx.createGain();
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(1,       t + attack);
+    env.gain.linearRampToValueAtTime(sustain, t + attack + decay);
+    env.gain.setValueAtTime(sustain,          t + attack + decay + modeHold);
+    env.gain.linearRampToValueAtTime(0,       t + attack + decay + modeHold + modeRel);
+
+    // Per-mode amplitude — higher modes contribute less energy
+    const modeAmp = audioCtx.createGain();
+    modeAmp.gain.value = amp;
+    env.connect(modeAmp);
+    modeAmp.connect(tonesPan);
+    if (reverbEnabled) { initReverb(); modeAmp.connect(reverbNode); }
+
+    // Two degenerate sub-mode oscillators — interference between them IS the beat
+    const panWidth = freqRatio === 1 ? TONE_STEREO_PAN : 0.4;
+    [[-1, partialHz - beatHz / 2], [1, partialHz + beatHz / 2]].forEach(([side, freq]) => {
+      const osc = audioCtx.createOscillator();
+      const pan = audioCtx.createStereoPanner();
+      osc.type = 'sine'; osc.frequency.value = freq;
+      pan.pan.value = side * panWidth;
+      osc.connect(pan); pan.connect(env);
+      osc.start(t); osc.stop(t + modeDur + stopSlop);
+      allOscs.push(osc);
+    });
+  });
+
+  // Duration = the fundamental's full envelope (longest-lived mode)
+  const totalDur = attack + decay + hold + release;
+  return { oscs: allOscs, dur: totalDur };
+}
+
+function setToneCharacter(char) {
+  toneCharacter = char;
+  document.querySelectorAll('.tone-char-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.char === char);
+  });
 }
 
 function fireTone(hz) {
@@ -3200,6 +3462,64 @@ function fireToneAt(hz, absCtxTime, adsrOverride) {
 function cancelScheduledTones() {
   _scheduledToneOscs.forEach(osc => { try { osc.stop(); } catch(e) {} osc.disconnect(); });
   _scheduledToneOscs = [];
+}
+
+// ── Session Bell ──────────────────────────────────────
+// Each bell routes directly to audioCtx.destination (bypasses masterGain),
+// so it works at session start (during fade-in) and end (masterGain already at 0).
+
+function _fireBell(hz, t) {
+  if (!audioCtx) return;
+  const { attack, decay, sustain, hold, release } = SESSION_BELL_ADSR;
+  const dur   = attack + decay + hold + release;
+  const ratio = Math.pow(2, TONE_DETUNE_CENTS / 1200);
+
+  // Own volume and envelope, direct to destination
+  const bellVol = audioCtx.createGain();
+  bellVol.gain.value = volume;
+  const env = audioCtx.createGain();
+  env.gain.setValueAtTime(0, t);
+  env.gain.linearRampToValueAtTime(1,       t + attack);
+  env.gain.linearRampToValueAtTime(sustain, t + attack + decay);
+  env.gain.setValueAtTime(sustain,          t + attack + decay + hold);
+  env.gain.linearRampToValueAtTime(0,       t + attack + decay + hold + release);
+  env.connect(bellVol);
+  bellVol.connect(audioCtx.destination);
+
+  [[-1, hz / ratio], [1, hz * ratio]].forEach(([side, freq]) => {
+    const osc = audioCtx.createOscillator();
+    const pan = audioCtx.createStereoPanner();
+    osc.type = 'sine'; osc.frequency.value = freq;
+    pan.pan.value = side * TONE_STEREO_PAN;
+    osc.connect(pan); pan.connect(env);
+    osc.start(t); osc.stop(t + dur + 0.2);
+    _scheduledBellOscs.push(osc);
+    osc.onended = () => { _scheduledBellOscs = _scheduledBellOscs.filter(o => o !== osc); };
+  });
+}
+
+function _cancelBells() {
+  _scheduledBellOscs.forEach(osc => { try { osc.stop(); } catch(e) {} osc.disconnect(); });
+  _scheduledBellOscs = [];
+}
+
+function playSessionBells() {
+  if (!sessionBellEnabled || !audioCtx) return;
+  const t = audioCtx.currentTime + 0.15;
+  _fireBell(sessionBellFreq, t);
+  _fireBell(sessionBellFreq, t + 2);
+  _fireBell(sessionBellFreq, t + 4);
+}
+
+function toggleSessionBells(enabled) {
+  sessionBellEnabled = enabled;
+  const row = document.getElementById('session-bells-row');
+  if (row) row.style.display = enabled ? 'flex' : 'none';
+}
+
+function updateSessionBellFreq(val) {
+  const v = parseFloat(val);
+  if (!isNaN(v) && v >= 50 && v <= 4000) sessionBellFreq = v;
 }
 
 function markTonePlaying(hz, dur) {
@@ -3534,9 +3854,13 @@ function updateChannelVol(ch, val) {
 
 function updateChannelPan(ch, val) {
   CH[ch].pan = parseFloat(val);
+  const v = CH[ch].pan;
+  const valEl = document.getElementById('val-ch-' + ch + '-pan');
+  if (valEl) valEl.textContent = v === 0 ? 'C' : (v < 0 ? 'L' : 'R') + Math.round(Math.abs(v) * 100);
+  updateSliderFill('sl-ch-' + ch + '-pan', v, -1, 1);
   const panMap = { noise: noisePan, ocean: oceanPan, ambient: ambientPan, bass: bassPan, iso: isoPan, tones: tonesPan };
   const p = panMap[ch];
-  if (p && audioCtx) p.pan.linearRampToValueAtTime(CH[ch].pan, audioCtx.currentTime + 0.05);
+  if (p && audioCtx) p.pan.linearRampToValueAtTime(v, audioCtx.currentTime + 0.05);
 }
 
 // ── Tone Palette UI ───────────────────────────────────
@@ -3557,10 +3881,6 @@ function updateToneRelease(v) {
   TONE_ADSR.release = Math.max(0.1, parseFloat(v) || 6);
   const el = document.getElementById('adsr-release');
   if (el) el.value = TONE_ADSR.release;
-}
-
-function toggleToneHarmonics(enabled) {
-  toneHarmonicsEnabled = enabled;
 }
 
 function applyAdsrPreset(name) {
@@ -4233,8 +4553,9 @@ function captureMixerState() {
     driftEnabled,
     beatDriftEnabled,
     reverbEnabled,
-    toneHarmonicsEnabled,
+    toneCharacter,
     rampInEnabled, rampInDelta, rampInMins,
+    sessionBellEnabled, sessionBellFreq,
     toneAdsr:  { attack: TONE_ADSR.attack, decay: TONE_ADSR.decay, sustain: TONE_ADSR.sustain, hold: TONE_ADSR.hold, release: TONE_ADSR.release },
     binaural: { enabled: CH.binaural.enabled, vol: CH.binaural.vol },
     noise:    { enabled: CH.noise.enabled,    vol: CH.noise.vol,    pan: CH.noise.pan,  type: CH.noise.type },
@@ -4307,11 +4628,12 @@ function applyMixerState(mixer) {
     if (cb) cb.checked = reverbEnabled;
   }
 
-  // Tone harmonics
-  if (mixer.toneHarmonicsEnabled != null) {
-    toneHarmonicsEnabled = mixer.toneHarmonicsEnabled;
-    const cb = document.getElementById('opt-harmonics');
-    if (cb) cb.checked = toneHarmonicsEnabled;
+  // Tone character ('pure' | 'warm' | 'bowl').
+  // Backward compat: old saves with toneHarmonicsEnabled:true map to 'warm'.
+  if (mixer.toneCharacter != null) {
+    setToneCharacter(mixer.toneCharacter);
+  } else if (mixer.toneHarmonicsEnabled) {
+    setToneCharacter('warm');
   }
 
   // Freq lead-in
@@ -4331,6 +4653,20 @@ function applyMixerState(mixer) {
     rampInMins = mixer.rampInMins;
     const el = document.getElementById('rampin-mins');
     if (el) el.value = rampInMins;
+  }
+
+  // Session bells
+  if (mixer.sessionBellEnabled != null) {
+    sessionBellEnabled = mixer.sessionBellEnabled;
+    const cb = document.getElementById('opt-session-bells');
+    if (cb) cb.checked = sessionBellEnabled;
+    const row = document.getElementById('session-bells-row');
+    if (row) row.style.display = sessionBellEnabled ? 'flex' : 'none';
+  }
+  if (mixer.sessionBellFreq != null) {
+    sessionBellFreq = mixer.sessionBellFreq;
+    const el = document.getElementById('session-bell-freq');
+    if (el) el.value = sessionBellFreq;
   }
 
   // Tone ADSR
@@ -4371,6 +4707,9 @@ function applyMixerState(mixer) {
       const sl = document.getElementById('sl-ch-' + ch + '-pan');
       if (sl) sl.value = CH[ch].pan;
       updateSliderFill('sl-ch-' + ch + '-pan', CH[ch].pan, -1, 1);
+      const v = CH[ch].pan;
+      const valEl = document.getElementById('val-ch-' + ch + '-pan');
+      if (valEl) valEl.textContent = v === 0 ? 'C' : (v < 0 ? 'L' : 'R') + Math.round(Math.abs(v) * 100);
       const panMap = { noise: noisePan, ocean: oceanPan, ambient: ambientPan, bass: bassPan, iso: isoPan, tones: tonesPan };
       const p = panMap[ch];
       if (p && audioCtx) p.pan.linearRampToValueAtTime(CH[ch].pan, audioCtx.currentTime + 0.05);
