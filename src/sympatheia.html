@@ -2249,76 +2249,76 @@ const BUILT_IN_PROGRAMS = [
     },
     steps: [
       { // 1 — Root — Muladhara — 396 Hz — 10 Hz alpha
-        beat: 10.0, carrier: 174, rampSecs: 0, holdSecs: 240,
+        // carrier 198 = 396/2 (octave below bowl) · bass 49.5 = 396/8
+        beat: 10.0, carrier: 198, bassFreq: 49.5, rampSecs: 0, holdSecs: 240,
         channelVols: { binaural: 0.20, noise: 0, ocean: 0.78, bass: 0.18, tones: 0.20 },
         toneCues: [
-          // Root bowl drone — blooms in 12 s, holds 160 s, releases through the rest of the step
-          { hz: 396, atSecs: 15, adsr: { attack: 12, hold: 160, release: 30 } },
-          // Swell bloom — bright accent once drone is established
-          { hz: 396, atSecs: 35, adsr: { attack: 10, hold:  30, release: 15 } },
-          // Midpoint marking bell
-          { hz: 396, atSecs: 120, adsr: { attack: 0.01, decay: 2, hold: 0, release: 8 } },
+          { hz: 396, atSecs:  15, adsr: { attack: 12, hold: 160, release: 30 } },                        // bowl drone
+          { hz: 396, atSecs:  35, adsr: { attack: 10, hold:  30, release: 15 }, character: 'warm'  },    // warm swell
+          { hz: 396, atSecs: 120, adsr: { attack: 0.01, decay: 2, hold: 0, release: 8 }, character: 'pure' }, // bell
         ],
       },
       { // 2 — Sacral — Svadhisthana — 417 Hz — 8.5 Hz low-alpha
-        beat: 8.5, carrier: 196, rampSecs: 60, holdSecs: 180,
+        // carrier 208 ≈ 417/2 · bass 52 ≈ 417/8
+        beat: 8.5, carrier: 208, bassFreq: 52, rampSecs: 60, holdSecs: 180,
         toneCues: [
-          { hz: 417, atSecs:  5, adsr: { attack: 12, hold: 160, release: 30 } },
-          { hz: 417, atSecs: 65, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
-          { hz: 417, atSecs: 80, adsr: { attack: 10, hold:  25, release: 12 } },
-          { hz: 417, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
+          { hz: 417, atSecs:   5, adsr: { attack: 12, hold: 160, release: 30 } },                         // bowl drone
+          { hz: 417, atSecs:  65, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 }, character: 'pure' }, // bell
+          { hz: 417, atSecs:  80, adsr: { attack: 10, hold:  25, release: 12 }, character: 'warm'  },     // warm swell
+          { hz: 417, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 }, character: 'pure' }, // bell
         ],
       },
       { // 3 — Solar Plexus — Manipura — 528 Hz — 7.83 Hz Schumann
-        beat: 7.83, carrier: 210, rampSecs: 60, holdSecs: 180,
+        // carrier 264 = 528/2 · bass 33 = 528/16
+        beat: 7.83, carrier: 264, bassFreq: 33, rampSecs: 60, holdSecs: 180,
         toneCues: [
-          { hz: 528, atSecs:  5, adsr: { attack: 12, hold: 160, release: 30 } },
-          { hz: 528, atSecs: 65, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
-          { hz: 528, atSecs: 80, adsr: { attack: 10, hold:  25, release: 12 } },
-          { hz: 528, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
+          { hz: 528, atSecs:   5, adsr: { attack: 12, hold: 160, release: 30 } },                         // bowl drone
+          { hz: 528, atSecs:  65, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 }, character: 'pure' }, // bell
+          { hz: 528, atSecs:  80, adsr: { attack: 10, hold:  25, release: 12 }, character: 'warm'  },     // warm swell
+          { hz: 528, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 }, character: 'pure' }, // bell
         ],
       },
       { // 4 — Heart — Anahata — 639 Hz — 6.5 Hz theta (deepest point of arc)
-        beat: 6.5, carrier: 228, rampSecs: 60, holdSecs: 180,
+        // carrier 213 = 639/3 · bass 40 ≈ 639/16
+        beat: 6.5, carrier: 213, bassFreq: 40, rampSecs: 60, holdSecs: 180,
         channelVols: { ocean: 0.90 }, // ocean swells at the heart centre
         toneCues: [
-          { hz: 639, atSecs:  5, adsr: { attack: 12, hold: 160, release: 30 } },
-          { hz: 639, atSecs: 65, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
-          // Slightly longer swell at the deepest point
-          { hz: 639, atSecs: 80, adsr: { attack: 10, hold:  30, release: 15 } },
-          // 432 Hz Cosmos alongside the heart — universal harmony at the centre
-          { hz: 432, atSecs: 140, adsr: { attack: 10, hold:  25, release: 15 } },
-          { hz: 639, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
+          { hz: 639, atSecs:   5, adsr: { attack: 12, hold: 160, release: 30 } },                         // bowl drone
+          { hz: 639, atSecs:  65, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 }, character: 'pure' }, // bell
+          { hz: 639, atSecs:  80, adsr: { attack: 10, hold:  30, release: 15 }, character: 'warm'  },     // longer warm swell at heart
+          { hz: 432, atSecs: 140, adsr: { attack: 10, hold:  25, release: 15 }, character: 'warm'  },     // Cosmos — warm swell
+          { hz: 639, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 }, character: 'pure' }, // bell
         ],
       },
       { // 5 — Throat — Vishuddha — 741 Hz — 7.83 Hz Schumann
-        beat: 7.83, carrier: 210, rampSecs: 60, holdSecs: 180,
+        // carrier 247 = 741/3 · bass 46 ≈ 741/16
+        beat: 7.83, carrier: 247, bassFreq: 46, rampSecs: 60, holdSecs: 180,
         toneCues: [
-          { hz: 741, atSecs:  5, adsr: { attack: 12, hold: 160, release: 30 } },
-          { hz: 741, atSecs: 65, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
-          { hz: 741, atSecs: 80, adsr: { attack: 10, hold:  25, release: 12 } },
-          { hz: 741, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
+          { hz: 741, atSecs:   5, adsr: { attack: 12, hold: 160, release: 30 } },                         // bowl drone
+          { hz: 741, atSecs:  65, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 }, character: 'pure' }, // bell
+          { hz: 741, atSecs:  80, adsr: { attack: 10, hold:  25, release: 12 }, character: 'warm'  },     // warm swell
+          { hz: 741, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 }, character: 'pure' }, // bell
         ],
       },
       { // 6 — Third Eye — Ajna — 852 Hz — 8.5 Hz low-alpha
-        beat: 8.5, carrier: 196, rampSecs: 60, holdSecs: 180,
+        // carrier 213 = 852/4 · bass 53 ≈ 852/16
+        beat: 8.5, carrier: 213, bassFreq: 53, rampSecs: 60, holdSecs: 180,
         toneCues: [
-          { hz: 852, atSecs:  5, adsr: { attack: 12, hold: 160, release: 30 } },
-          { hz: 852, atSecs: 65, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
-          { hz: 852, atSecs: 80, adsr: { attack: 10, hold:  25, release: 12 } },
-          { hz: 852, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 } },
+          { hz: 852, atSecs:   5, adsr: { attack: 12, hold: 160, release: 30 } },                         // bowl drone
+          { hz: 852, atSecs:  65, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 }, character: 'pure' }, // bell
+          { hz: 852, atSecs:  80, adsr: { attack: 10, hold:  25, release: 12 }, character: 'warm'  },     // warm swell
+          { hz: 852, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release: 7 }, character: 'pure' }, // bell
         ],
       },
       { // 7 — Crown — Sahasrara — 963 Hz — 10.5 Hz alpha
-        beat: 10.5, carrier: 174, rampSecs: 60, holdSecs: 180,
+        // carrier 241 ≈ 963/4 · bass 60 ≈ 963/16 (capped at slider max)
+        beat: 10.5, carrier: 241, bassFreq: 60, rampSecs: 60, holdSecs: 180,
         channelVols: { ocean: 0.62 }, // soften ocean for the closing ascent
         toneCues: [
-          { hz: 963, atSecs:  5, adsr: { attack: 12, hold: 160, release: 30 } },
-          { hz: 963, atSecs: 65, adsr: { attack: 0.01, decay: 2, hold: 0, release:  7 } },
-          // Long crown swell — builds slowly through the mid-hold
-          { hz: 963, atSecs: 85, adsr: { attack: 15, hold:  35, release: 20 } },
-          // Midpoint bell
-          { hz: 963, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release:  7 } },
+          { hz: 963, atSecs:   5, adsr: { attack: 12, hold: 160, release: 30 } },                          // bowl drone
+          { hz: 963, atSecs:  65, adsr: { attack: 0.01, decay: 2, hold: 0, release:  7 }, character: 'pure' }, // bell
+          { hz: 963, atSecs:  85, adsr: { attack: 15, hold:  35, release: 20 }, character: 'warm'  },      // long warm crown swell
+          { hz: 963, atSecs: 155, adsr: { attack: 0.01, decay: 2, hold: 0, release:  7 }, character: 'pure' }, // bell
         ],
       },
     ],
@@ -2479,10 +2479,10 @@ const TONE_ADSR = { attack: 4, decay: 0.5, sustain: 0.75, hold: 2, release: 6 };
 
 const ADSR_PRESETS = {
   swell:  { attack: 4,     decay: 0.5,  sustain: 0.75, hold: 2,  release: 6   },
-  bell:   { attack: 0.01,  decay: 1.5,  sustain: 0.15, hold: 0,  release: 5   },
+  bell:   { attack: 0.01,  decay: 1.5,  sustain: 0.15, hold: 0,  release: 3   },
   pad:    { attack: 6,     decay: 0.5,  sustain: 0.8,  hold: 4,  release: 8   },
   pluck:  { attack: 0.005, decay: 0.4,  sustain: 0,    hold: 0,  release: 0.3 },
-  drone:  { attack: 8,     decay: 0.2,  sustain: 0.95, hold: 10, release: 10  },
+  drone:  { attack: 8,     decay: 0.2,  sustain: 0.95, hold: 20, release: 10  },
 };
 
 // Track oscillators scheduled by fireToneAt so they can be cancelled on stop/disable
@@ -3311,15 +3311,19 @@ const TONE_HARMONIC_LEVELS = { octave: 0.35, fifth: 0.25 };
 //   holdFactor / releaseFactor — scale the ADSR hold/release for this mode (higher
 //                modes radiate energy faster, producing the "purifying" tail)
 const BOWL_MODES = [
-  [1.000, 1.00, 0.50, 1.00, 1.00],  // fundamental      [2,0] Chladni mode
-  [2.756, 0.35, 0.80, 0.60, 0.50],  // 1st overtone     [3,0] mode — inharmonic
-  [5.404, 0.12, 1.20, 0.30, 0.28],  // 2nd overtone     [4,0] mode — faster decay
+  [1.000, 1.00, 0.2, 1.00, 1.00],  // fundamental      [2,0] Chladni mode
+  [2.756, 0.35, 0.4, 0.60, 0.50],  // 1st overtone     [3,0] mode — inharmonic
+  [5.404, 0.12, 0.7, 0.30, 0.28],  // 2nd overtone     [4,0] mode — faster decay
 ];
+// Col 3: controls bowl oscillation speed. 
+// Original: 0.5, 0.8, 1.2 
 
 // Shared helper: schedule a stereo-detuned ADSR tone pair at a given AudioContext time.
-// Dispatches to _buildBowlOscs() when toneCharacter === 'bowl'.
-function _buildToneOscs(hz, t, adsr, stopSlop) {
-  if (toneCharacter === 'bowl') return _buildBowlOscs(hz, t, adsr, stopSlop);
+// char overrides the global toneCharacter — used by per-cue character field.
+// Dispatches to _buildBowlOscs() when character === 'bowl'.
+function _buildToneOscs(hz, t, adsr, stopSlop, char) {
+  const ch = char || toneCharacter;
+  if (ch === 'bowl') return _buildBowlOscs(hz, t, adsr, stopSlop);
 
   const { attack, decay, sustain, release, hold } = adsr;
   const dur   = attack + decay + hold + release;
@@ -3349,7 +3353,7 @@ function _buildToneOscs(hz, t, adsr, stopSlop) {
   });
 
   // Warm mode: harmonic overtones (octave ×0.35, perfect fifth ×0.25)
-  if (toneCharacter === 'warm') {
+  if (ch === 'warm') {
     [
       [hz * 2,   TONE_HARMONIC_LEVELS.octave],
       [hz * 1.5, TONE_HARMONIC_LEVELS.fifth ],
@@ -3448,10 +3452,10 @@ function fireTone(hz) {
   }, (dur + 0.4) * 1000);
 }
 
-function fireToneAt(hz, absCtxTime, adsrOverride) {
+function fireToneAt(hz, absCtxTime, adsrOverride, character) {
   if (!tonesPan) return;
   const adsr = adsrOverride ? Object.assign({}, TONE_ADSR, adsrOverride) : TONE_ADSR;
-  const { oscs, dur } = _buildToneOscs(hz, absCtxTime, adsr, 0.1);
+  const { oscs, dur } = _buildToneOscs(hz, absCtxTime, adsr, 0.1, character);
 
   oscs.forEach(osc => {
     _scheduledToneOscs.push(osc);
@@ -3556,7 +3560,7 @@ function scheduleToneCues(t0) {
   let stepStart = 0;
   for (const step of seqSteps) {
     for (const cue of (step.toneCues || [])) {
-      if (CH.tones.enabled) fireToneAt(cue.hz, t0 + stepStart + cue.atSecs, cue.adsr);
+      if (CH.tones.enabled) fireToneAt(cue.hz, t0 + stepStart + cue.atSecs, cue.adsr, cue.character);
     }
     stepStart += step.rampSecs + step.holdSecs;
   }
@@ -4008,14 +4012,14 @@ function buildSeqSchedule(stepsArg) {
     const prev = i > 0 ? steps[i - 1] : null;
 
     if (i === 0 || step.rampSecs === 0) {
-      events.push({ t, beat: step.beat, carrier: step.carrier, type: 'set' });
+      events.push({ t, beat: step.beat, carrier: step.carrier, bassFreq: step.bassFreq, type: 'set' });
     } else {
-      events.push({ t, beat: prev.beat, carrier: prev.carrier, type: 'set' });
-      events.push({ t: t + step.rampSecs, beat: step.beat, carrier: step.carrier, type: 'ramp' });
+      events.push({ t, beat: prev.beat, carrier: prev.carrier, bassFreq: prev.bassFreq, type: 'set' });
+      events.push({ t: t + step.rampSecs, beat: step.beat, carrier: step.carrier, bassFreq: step.bassFreq, type: 'ramp' });
     }
 
     t += step.rampSecs + step.holdSecs;
-    events.push({ t, beat: step.beat, carrier: step.carrier, type: 'set' });
+    events.push({ t, beat: step.beat, carrier: step.carrier, bassFreq: step.bassFreq, type: 'set' });
   }
 
   return { events, totalSecs: t };
@@ -4042,6 +4046,14 @@ function applySchedule(events, t0) {
         first = false;
       }
     }
+    // Bass frequency scheduling — only when step defines bassFreq
+    if (bassOsc && ev.bassFreq != null) {
+      if (ev.type === 'set') {
+        bassOsc.frequency.setValueAtTime(ev.bassFreq, absT);
+      } else {
+        bassOsc.frequency.linearRampToValueAtTime(ev.bassFreq, absT);
+      }
+    }
   }
 }
 
@@ -4056,17 +4068,21 @@ function interpolateAt(events, elapsed) {
     else { next = events[i]; break; }
   }
 
-  if (!next) return { beat: prev.beat, carrier: prev.carrier };
+  if (!next) return { beat: prev.beat, carrier: prev.carrier, bassFreq: prev.bassFreq };
 
   if (next.type === 'ramp') {
     const span = next.t - prev.t;
     const frac = span > 0 ? (elapsed - prev.t) / span : 1;
+    const bf = (prev.bassFreq != null && next.bassFreq != null)
+      ? prev.bassFreq + (next.bassFreq - prev.bassFreq) * frac
+      : (prev.bassFreq ?? next.bassFreq);
     return {
       beat:    prev.beat    + (next.beat    - prev.beat)    * frac,
       carrier: prev.carrier + (next.carrier - prev.carrier) * frac,
+      bassFreq: bf,
     };
   }
-  return { beat: prev.beat, carrier: prev.carrier };
+  return { beat: prev.beat, carrier: prev.carrier, bassFreq: prev.bassFreq };
 }
 
 function toggleSeq() {
@@ -4468,9 +4484,15 @@ function tickSequence() {
   const pct = Math.min(100, (elapsed / total) * 100);
   document.getElementById('seq-fill').style.width = pct + '%';
 
-  const { beat, carrier } = interpolateAt(_seqSchedule.events, elapsed);
+  const { beat, carrier, bassFreq: seqBassFreq } = interpolateAt(_seqSchedule.events, elapsed);
   beatFreq    = beat;
   carrierFreq = carrier;
+
+  // Update bass freq display (audio is pre-scheduled; only update the label)
+  if (seqBassFreq != null) {
+    const bfEl = document.getElementById('val-ch-bass-freq');
+    if (bfEl) bfEl.textContent = Math.round(seqBassFreq) + ' Hz';
+  }
 
   // Keep sliders in sync so stopping the sequence leaves controls in a consistent state
   document.getElementById('sl-beat').value     = beatFreq;
