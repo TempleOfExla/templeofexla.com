@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "start": "npx @11ty/eleventy --serve",
+    "start:drafts": "DRAFTS=true npx @11ty/eleventy --serve",
     "build": "npx @11ty/eleventy",
-    "cpapps": "cp ../liminal/dist/sympatheia.html src/sympatheia.html && cp ../texla-bells/dist/bells.html src/bells.html"
+    "cpapps": "mkdir -p src/instruments && cp ../liminal/dist/sympatheia.html src/instruments/sympatheia.html && cp ../texla-bells/dist/bells.html src/instruments/bells.html",
+    "crosspost": "node scripts/crosspost.js",
+    "new-post": "node scripts/new-post.js"
   },
   "devDependencies": {
     "@11ty/eleventy": "^3.1.0"

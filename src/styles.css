@@ -173,7 +173,7 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 3.5rem 0 2.5rem;
+  padding: 0.5rem 0 0.5rem;
   text-align: center;
 }
 
@@ -211,9 +211,21 @@ body.dark .hero-image {
   color: var(--muted);
   margin: 0;
   font-style: italic;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+  align-items: center;
   letter-spacing: 0.02em;
-  max-width: 400px;
+  max-width: 520px;
   line-height: 1.75;
+}
+
+.subtitle-greek {
+  font-family: var(--font-reading);
+  font-size: 1.15rem;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  color: var(--primary);
 }
 
 .section-title {
@@ -359,10 +371,28 @@ body.dark .hero-image {
   padding: 1.6rem 0;
   border-bottom: 1px solid var(--border);
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.2rem;
+}
+.blog-list-item:first-child { border-top: 1px solid var(--border); }
+
+.blog-list-item-body {
+  flex: 1;
+  display: flex;
   flex-direction: column;
   gap: 0.4em;
 }
-.blog-list-item:first-child { border-top: 1px solid var(--border); }
+
+.blog-list-item-thumb {
+  width: 150px;
+  height: 150px;
+  flex-shrink: 0;
+  border-radius: 0.5rem;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.8;
+}
 
 .recent-meta-row {
   display: flex;
@@ -783,23 +813,28 @@ pre, code {
 }
 
 .tool-launch-btn {
-  display: inline-block;
-  width: fit-content;
-  padding: 0.45em 1.6em;
-  border: 1px solid var(--border);
-  border-radius: 0.35em;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: block;
+  text-align: center;
+  padding: 0.6em 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 0.75rem 0.75rem;
   background: transparent;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-family: var(--font-ui);
   font-weight: 600;
-  text-decoration: none;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  transition: border-color .18s, color .18s;
+  letter-spacing: 0.18em;
+  pointer-events: none;
+  z-index: 1;
+  transition: background .18s, color .18s, border-color .18s;
 }
 
-.tool-launch-btn:hover {
+.tool-card:hover .tool-launch-btn {
   border-color: var(--accent);
   color: var(--accent);
 }

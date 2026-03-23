@@ -27,8 +27,12 @@ export default async function(eleventyConfig) {
     return format(new Date(date), dateFormat);
   });
 
+  const includeDrafts = process.env.DRAFTS === "true";
+
   eleventyConfig.addCollection("posts", function(collectionApi) {
-    return collectionApi.getFilteredByGlob("src/blog/posts/**/*.md").filter(post => !post.data.draft).reverse();
+    return collectionApi.getFilteredByGlob("src/blog/posts/**/*.md")
+      .filter(post => includeDrafts || !post.data.draft)
+      .reverse();
   });
 
   // Category collections
@@ -36,14 +40,13 @@ export default async function(eleventyConfig) {
   for (const cat of categories) {
     eleventyConfig.addCollection(`cat_${cat.replace("-", "_")}`, function(collectionApi) {
       return collectionApi.getFilteredByGlob("src/blog/posts/**/*.md")
-        .filter(post => !post.data.draft && post.data.category === cat)
+        .filter(post => (includeDrafts || !post.data.draft) && post.data.category === cat)
         .reverse();
     });
   }
  
   eleventyConfig.addPassthroughCopy("src/styles.css");
-  eleventyConfig.addPassthroughCopy("src/sympatheia.html");
-  eleventyConfig.addPassthroughCopy("src/bells.html");
+  eleventyConfig.addPassthroughCopy("src/instruments");
 
   eleventyConfig.addFilter("featuredFirst", (arr, count = 3) => {
     const featured = arr.filter(post => post.data && post.data.featured);
