@@ -1,13 +1,13 @@
 ---
 layout: layouts/post.njk
 title: "Sympatheia Part 2: The Sound Environment"
-date: 2026-03-21
+date: 2026-04-05
 iso_str: 2026-03-21T21:42:00-04:00
 summary: "A pure sine tone alone is rarely enough for a serious session. Here's what noise, ocean, and sub-bass each contribute — and how to combine them into a layered environment that holds you without competing with the entrainment signal."
 featured_image: src/blog/posts/2026/sympatheia-part-2/images/sympatheia-ocean.png
 category: navigation
 tags: [audio, meditation, tools, binaural-beats, sympatheia]
-draft: true
+draft: false
 ---
 
 A lone sine wave at 200 Hz is technically correct as a binaural beat carrier. Put it on for twenty minutes and see how you feel. Most people find it fatiguing in a way that unstructured ambient sound isn't — partly because a single unwavering tone draws conscious attention to itself, and partly because the total absence of acoustic texture is its own kind of distraction. The mind has nothing to settle into.
